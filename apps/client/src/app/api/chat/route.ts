@@ -23,13 +23,13 @@ export async function POST(req: Request) {
     });
 
     // Get tools from MCP server
-    const tools = await mcpClient.tools();
+    const mcpTools = await mcpClient.tools();
 
     const result = streamText({
       model: openai("gpt-4o"),
       system: `You are a helpful customer service agent. You have access to company information, customers, and conversations.`,
       messages: convertToModelMessages(messages),
-      tools,
+      tools:mcpTools,
       // allow one follow-up step after tool results
       stopWhen: stepCountIs(2),
       // Close MCP client when streaming is finished
