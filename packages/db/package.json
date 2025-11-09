@@ -1,0 +1,26 @@
+{
+  "name": "@answerpoint/db",
+  "version": "0.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:drop": "drizzle-kit drop"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.6",
+    "pg": "^8.13.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@answerpoint/typescript-config": "workspace:*",
+    "@types/node": "^20.10.0",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.31.5",
+    "typescript": "^5.7.2"
+  }
+}
