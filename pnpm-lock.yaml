@@ -17,9 +17,15 @@ importers:
 
   apps/ai-chatbot:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.48
+        version: 2.0.48(zod@4.1.12)
       '@ai-sdk/react':
         specifier: ^2.0.68
         version: 2.0.68(react@19.2.0)(zod@4.1.12)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.19.1
+        version: 1.19.1
       '@radix-ui/react-collapsible':
         specifier: ^1.1.12
         version: 1.1.12(@types/react-dom@19.2.1)(@types/react@19.2.2)(react-dom@19.2.0)(react@19.2.0)
@@ -354,6 +360,17 @@ packages:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.12(zod@3.25.76)
       zod: 3.25.76
+    dev: false
+
+  /@ai-sdk/openai@2.0.48(zod@4.1.12):
+    resolution: {integrity: sha512-dIGOVtHaScTNIQzxkE4I8T5PpoutFWxonR/awdRz+5sCpoO7V2kVL44+X6piJbQIMdFYUK/h+HTX3+BjTbRHmw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.12)
+      zod: 4.1.12
     dev: false
 
   /@ai-sdk/provider-utils@3.0.12(zod@3.25.76):
