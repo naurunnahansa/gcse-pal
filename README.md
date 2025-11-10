@@ -138,31 +138,22 @@ pnpm start            # Start production server
 
 ### Environment Variables
 
-Create `.env` file in the root directory:
+Create a `.env` file in the root directory:
 
 ```bash
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/answerpoint_db
+# Anthropic API Key (Required)
+ANTHROPIC_API_KEY=sk-ant-...
 
-# Neo4j
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
+# xMCP Server URL (Optional - defaults to http://localhost:3001/mcp)
+MCP_SERVER_URL=http://localhost:3001/mcp
 
-# WorkOS Authentication
-WORKOS_API_KEY=sk_test_...
-WORKOS_CLIENT_ID=client_...
-WORKOS_COOKIE_PASSWORD=32-character-secure-password
-WORKOS_REDIRECT_URI=http://localhost:3000/callback
+# Database URL (Optional - only if using packages/db)
+# DATABASE_URL=postgresql://username:password@localhost:5432/database
+```
 
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# API Configuration
-PORT=8001
-NODE_ENV=development
-API_VERSION=1.0.0
-CORS_ORIGIN=http://localhost:3000
+You can also copy the example file:
+```bash
+cp .env.example .env
 ```
 
 ## 🏗️ Architecture Overview
@@ -295,8 +286,8 @@ pnpm lint
 pnpm build
 
 # Start production servers
-cd apps/api && pnpm start
-cd apps/client && pnpm start
+cd apps/xmcp && pnpm start
+cd apps/platform && pnpm start
 ```
 
 ### Environment Setup

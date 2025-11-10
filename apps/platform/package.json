@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.43",
     "@ai-sdk/openai": "^2.0.48",
     "@ai-sdk/react": "^2.0.68",
     "@modelcontextprotocol/sdk": "^1.19.1",

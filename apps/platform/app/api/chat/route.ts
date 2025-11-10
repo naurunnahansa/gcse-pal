@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import {
   convertToModelMessages,
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const mcpTools = await mcpClient.tools();
 
     const result = streamText({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-sonnet-4-5"),
       system: `You are a helpful customer service agent. You have access to company information, customers, and conversations.`,
       messages: convertToModelMessages(messages),
       tools:mcpTools,
