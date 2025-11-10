@@ -1,6 +1,6 @@
 # TypeScript Configuration Package
 
-This package contains shared TypeScript configurations for the AnswerPoint monorepo.
+This package contains shared TypeScript configurations for the GCSE Pal monorepo.
 
 ## Available Configurations
 
@@ -14,7 +14,7 @@ This package contains shared TypeScript configurations for the AnswerPoint monor
 ### For Node.js/Express Apps
 ```json
 {
-  "extends": "@answerpoint/typescript-config/node.json",
+  "extends": "@gcse-pal/typescript-config/node.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
@@ -27,7 +27,7 @@ This package contains shared TypeScript configurations for the AnswerPoint monor
 ### For React Apps
 ```json
 {
-  "extends": "@answerpoint/typescript-config/react.json",
+  "extends": "@gcse-pal/typescript-config/react.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
@@ -40,7 +40,7 @@ This package contains shared TypeScript configurations for the AnswerPoint monor
 ### For Next.js Apps
 ```json
 {
-  "extends": "@answerpoint/typescript-config/nextjs.json",
+  "extends": "@gcse-pal/typescript-config/nextjs.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"

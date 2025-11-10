@@ -1,7 +1,7 @@
 {
-  "name": "@answerpoint/typescript-config",
+  "name": "@gcse-pal/typescript-config",
   "version": "1.0.0",
-  "description": "Shared TypeScript configuration for AnswerPoint monorepo",
+  "description": "Shared TypeScript configuration for GCSE Pal monorepo",
   "main": "index.js",
   "files": [
     "base.json",
@@ -13,9 +13,9 @@
     "typescript",
     "config",
     "monorepo",
-    "answerpoint"
+    "gcse-pal"
   ],
-  "author": "AnswerPoint Team",
+  "author": "GCSE Pal Team",
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.3.0"

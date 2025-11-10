@@ -1,5 +1,5 @@
 {
-  "extends": "@answerpoint/typescript-config/node.json",
+  "extends": "@gcse-pal/typescript-config/node.json",
   "compilerOptions": {
     "noEmit": true
   },

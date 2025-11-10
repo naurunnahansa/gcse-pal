@@ -1,5 +1,5 @@
 {
-  "name": "@answerpoint/knowledge",
+  "name": "@gcse-pal/knowledge",
   "version": "0.0.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -8,7 +8,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@answerpoint/typescript-config": "workspace:*",    
+    "@gcse-pal/typescript-config": "workspace:*",
     "@types/node": "^20.10.0",
     "typescript": "^5.7.2"
   }
