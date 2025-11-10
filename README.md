@@ -32,16 +32,16 @@ pnpm dev
 ```
 
 This will start:
-- **Frontend (Next.js)**: http://localhost:3000
-- **Backend (Express)**: http://localhost:8001
+- **Platform (Next.js)**: http://localhost:3000
+- **xMCP Server**: MCP application
 
 ## 📁 Project Structure
 
 ```
 answerpoint/
 ├── apps/
-│   ├── client/              # Next.js 15 frontend (React 19, WorkOS Auth)
-│   └── api/                 # Express.js backend (MCP server, REST API)
+│   ├── platform/            # Next.js 15 AI chatbot platform
+│   └── xmcp/                # xMCP application with tool syntax
 ├── packages/
 │   ├── db/                  # Drizzle ORM + PostgreSQL schema
 │   ├── knowledge/           # Neo4j integration for vector search
@@ -122,17 +122,16 @@ pnpm db:studio        # Open Drizzle Studio for database management
 ### Individual Apps
 
 ```bash
-# Frontend (Next.js)
-cd apps/client
+# Platform (Next.js)
+cd apps/platform
 pnpm dev              # Start on port 3000
 pnpm build            # Build for production
 
-# Backend (Express + MCP)
-cd apps/api
-pnpm dev              # Start on port 8001
+# xMCP Application
+cd apps/xmcp
+pnpm dev              # Start in dev mode
+pnpm build            # Build for production
 pnpm start            # Start production server
-pnpm dev:mcp          # Start MCP server in dev mode
-pnpm start:mcp        # Start MCP server (stdio)
 ```
 
 ## 🔧 Configuration

@@ -2,7 +2,7 @@ version: 3
 agent:
   authtoken: 2Z59YsT0vyHitD5BSU81DEIG5VR_5Z2ecRJVCG75jvZFTouV4
 endpoints:
-  - name: client
+  - name: platform
     url: catchweight-undiatonically-valencia.ngrok-free.dev
     upstream:
       url: http://localhost:3000
