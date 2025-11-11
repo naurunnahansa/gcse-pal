@@ -28,6 +28,12 @@ const Header = () => {
               Dashboard
             </Link>
             <Link
+              href="/admin"
+              className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+            >
+              Admin
+            </Link>
+            <Link
               href="/auth/signin"
               className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
             >

@@ -25,7 +25,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
     { name: "Flash Quiz", href: "/evals/flash-quiz", icon: Brain },
     { name: "Learning", href: "/learning", icon: BookOpen },
-    { name: "Knowledge Graph", href: "/learning/knowledge-graph", icon: Network },
     { name: "Progress", href: "/progress", icon: BarChart3 },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
@@ -100,7 +99,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div className="flex-1 flex flex-col">
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-white px-6 shadow-sm">
           <Button
