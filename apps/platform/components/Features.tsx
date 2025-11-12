@@ -1,4 +1,5 @@
 import { Brain, BookOpen, Network } from "lucide-react";
+import AsciiText from "@/components/AsciiText";
 
 const Features = () => {
   const features = [
@@ -23,12 +24,22 @@ const Features = () => {
   ];
 
   return (
-    <section className="container py-24">
+    <section className="container py-24 relative">
+      {/* Subtle ASCII background */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-100 pointer-events-none">
+        <AsciiText
+          text="FEATURES"
+          speed={15}
+          className="transform rotate-2 scale-100"
+        />
+      </div>
+
+      <div className="relative z-10">
         <h2 className="mb-16 text-center text-4xl font-bold md:text-5xl">
           Everything you need to ace your GCSEs
         </h2>
 
-      <div className="grid gap-12 md:grid-cols-3">
+        <div className="grid gap-12 md:grid-cols-3">
         {features.map((feature) => (
           <div key={feature.title} className="flex flex-col items-start">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary crayon-effect">
@@ -38,6 +49,7 @@ const Features = () => {
             <p className="text-muted-foreground">{feature.description}</p>
           </div>
         ))}
+        </div>
       </div>
     </section>
   );

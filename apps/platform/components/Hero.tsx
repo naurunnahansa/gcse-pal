@@ -1,11 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import AsciiText from "@/components/AsciiText";
+import GameOfLifeGrid from "@/components/GameOfLifeGrid";
 
 const Hero = () => {
   return (
-    <section className="container py-24 md:py-32">
-      <div className="flex flex-col items-center text-center">
+    <section className="container py-24 md:py-32 relative overflow-hidden">
+      {/* Conway's Game of Life Grid Background - Limited to Hero */}
+      <GameOfLifeGrid />
+
+      {/* ASCII Text Background */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-100 pointer-events-none">
+        <AsciiText
+          text="GCSE PAL"
+          speed={10}
+          className="transform -rotate-3 scale-150"
+        />
+      </div>
+
+      <div className="flex flex-col items-center text-center relative z-20">
         <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-primary shadow-lg crayon-effect">
           <span className="text-3xl font-bold text-primary-foreground">G</span>
         </div>
