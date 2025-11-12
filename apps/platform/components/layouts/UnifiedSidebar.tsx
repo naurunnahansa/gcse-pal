@@ -26,11 +26,12 @@ import {
   LogOut,
   User,
   TrendingUp,
-  Brain,
   Network,
   Target,
   Clock,
   Award,
+  Search,
+  Play,
 } from 'lucide-react';
 
 interface UnifiedSidebarProps {
@@ -54,16 +55,20 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       title: 'Main',
       items: [
         { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-        { name: 'Learning', href: '/learning', icon: BookOpen },
-        { name: 'Flash Quiz', href: '/evals/flash-quiz', icon: Brain },
         { name: 'Progress', href: '/progress', icon: TrendingUp },
+      ],
+    },
+    {
+      title: 'Courses',
+      items: [
+        { name: 'My Courses', href: '/learning/courses/my', icon: Play },
+        { name: 'Browse Courses', href: '/learning/courses/browse', icon: Search },
       ],
     },
     {
       title: 'Learning Tools',
       items: [
         { name: 'Topic Chat', href: '/learning/chat', icon: Network },
-        { name: 'Practice Tests', href: '/evals/practice', icon: Target },
         { name: 'Study Timer', href: '/tools/timer', icon: Clock },
         { name: 'Achievements', href: '/achievements', icon: Award },
       ],
@@ -72,7 +77,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       title: 'Settings',
       items: [
         { name: 'Profile Settings', href: '/settings', icon: Settings },
-        { name: 'Preferences', href: '/settings/preferences', icon: Settings },
       ],
       collapsible: true,
       open: settingsOpen,

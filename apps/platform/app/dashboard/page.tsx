@@ -7,9 +7,6 @@ import { Progress } from "@/components/ui/progress";
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import {
   BookOpen,
-  Brain,
-  Network,
-  Zap,
   Clock,
   TrendingUp,
   ChevronRight,
@@ -36,47 +33,26 @@ const Dashboard = () => {
     { name: "Chemistry", progress: 53, color: "bg-orange-500" },
   ];
 
-  const quickActions = [
-    {
-      icon: Zap,
-      title: "Flash Quiz",
-      description: "Quick 5-minute assessment",
-      action: "Start Quiz",
-    },
-    {
-      icon: Brain,
-      title: "Mid Exam",
-      description: "1-hour comprehensive test",
-      action: "Begin Exam",
-    },
-    {
-      icon: BookOpen,
-      title: "Continue Learning",
-      description: "Pick up where you left off",
-      action: "Resume",
-    },
-  ];
-
   const recentActivity = [
     {
       subject: "Mathematics",
       topic: "Quadratic Equations",
-      type: "Flash Quiz",
-      score: 85,
+      type: "Video Lesson",
+      score: null,
       time: "2 hours ago",
     },
     {
       subject: "Biology",
       topic: "Cell Structure",
-      type: "Topic Chat",
+      type: "Reading Material",
       score: null,
       time: "5 hours ago",
     },
     {
       subject: "English Literature",
       topic: "Macbeth Analysis",
-      type: "Mid Exam",
-      score: 72,
+      type: "Study Notes",
+      score: null,
       time: "Yesterday",
     },
   ];
@@ -107,30 +83,6 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mb-12 grid gap-6 md:grid-cols-3">
-          {quickActions.map((action) => (
-            <Card
-              key={action.title}
-              className="group cursor-pointer border-border p-6 transition-all hover:border-foreground hover:shadow-lg"
-            >
-              <CardContent className="p-0">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-foreground group-hover:scale-110 transition-transform">
-                  <action.icon className="h-6 w-6 text-background" />
-                </div>
-                <h3 className="mb-1 text-lg font-semibold">{action.title}</h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  {action.description}
-                </p>
-                <Button variant="outline" className="w-full group-hover:bg-foreground group-hover:text-background">
-                  {action.action}
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Subject Progress */}
           <div className="lg:col-span-2">
@@ -157,14 +109,6 @@ const Dashboard = () => {
                       <Button size="sm" variant="outline">
                         <BookOpen className="mr-2 h-4 w-4" />
                         Learn
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Brain className="mr-2 h-4 w-4" />
-                        Test
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Network className="mr-2 h-4 w-4" />
-                        Graph
                       </Button>
                     </div>
                   </CardContent>
