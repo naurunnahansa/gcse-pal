@@ -67,7 +67,7 @@ const Pricing = () => {
               key={plan.name}
               className={`flex flex-col rounded-2xl border p-8 ${
                 plan.featured
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-primary bg-primary text-primary-foreground crayon-effect"
                   : "border-border bg-background"
               }`}
             >
@@ -76,7 +76,7 @@ const Pricing = () => {
                 <span className="text-4xl font-bold">{plan.price}</span>
                 <span
                   className={`ml-2 text-sm ${
-                    plan.featured ? "text-background/70" : "text-muted-foreground"
+                    plan.featured ? "text-primary-foreground/70" : "text-muted-foreground"
                   }`}
                 >
                   {plan.period}
@@ -84,7 +84,7 @@ const Pricing = () => {
               </div>
               <p
                 className={`mb-6 text-sm ${
-                  plan.featured ? "text-background/70" : "text-muted-foreground"
+                  plan.featured ? "text-primary-foreground/70" : "text-muted-foreground"
                 }`}
               >
                 {plan.description}
@@ -95,7 +95,7 @@ const Pricing = () => {
                   <li key={feature} className="flex items-start gap-2">
                     <Check
                       className={`h-5 w-5 flex-shrink-0 ${
-                        plan.featured ? "text-background" : "text-foreground"
+                        plan.featured ? "text-primary-foreground" : "text-foreground"
                       }`}
                     />
                     <span className="text-sm">{feature}</span>
@@ -107,8 +107,8 @@ const Pricing = () => {
                 variant={plan.featured ? "outline" : "default"}
                 className={`w-full ${
                   plan.featured
-                    ? "border-background bg-background text-foreground hover:bg-background/90"
-                    : ""
+                    ? "border-primary-foreground bg-primary-foreground text-primary hover:bg-primary-foreground/90 crayon-effect"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground crayon-effect"
                 }`}
               >
                 {plan.cta}

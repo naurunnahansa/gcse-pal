@@ -32,7 +32,7 @@ const HowItWorks = () => {
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step) => (
               <div key={step.number} className="flex flex-col">
-                <span className="mb-4 text-5xl font-bold text-muted-foreground">
+                <span className="mb-4 text-5xl font-bold text-primary crayon-text">
                   {step.number}
                 </span>
                 <h3 className="mb-3 text-lg font-semibold">{step.title}</h3>

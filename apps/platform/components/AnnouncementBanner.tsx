@@ -12,13 +12,13 @@ const AnnouncementBanner = () => {
     <div className="relative border-b border-border/40 bg-background">
       <div className="container flex items-center justify-center gap-3 py-3">
         <span className="inline-flex items-center gap-2 text-sm">
-          <span className="rounded-md border border-border px-2 py-0.5 text-xs font-medium">
+          <span className="rounded-md border border-border px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground crayon-noise">
             New
           </span>
           <span className="text-muted-foreground">
             Introducing AI-powered GCSE study support for better exam results
           </span>
-          <span className="text-foreground">→</span>
+          <span className="text-primary crayon-text">→</span>
         </span>
         <button
           onClick={() => setIsVisible(false)}

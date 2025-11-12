@@ -10,8 +10,8 @@ const Header = () => {
       <div className="container">
         <div className="flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black">
-              <span className="text-lg font-bold text-white">G</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary crayon-effect">
+              <span className="text-lg font-bold text-primary-foreground">G</span>
             </div>
             <span className="text-xl font-bold">GCSEPal</span>
           </Link>
@@ -43,7 +43,7 @@ const Header = () => {
               >
                 Sign In
               </Link>
-              <Button size="sm" className="bg-black hover:bg-gray-800 text-white" asChild>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground crayon-effect" asChild>
                 <Link href="/auth/signup">Get Started</Link>
               </Button>
             </SignedOut>

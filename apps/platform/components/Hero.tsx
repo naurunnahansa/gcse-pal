@@ -6,14 +6,14 @@ const Hero = () => {
   return (
     <section className="container py-24 md:py-32">
       <div className="flex flex-col items-center text-center">
-        <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-black shadow-lg">
-          <span className="text-3xl font-bold text-white">G</span>
+        <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-primary shadow-lg crayon-effect">
+          <span className="text-3xl font-bold text-primary-foreground">G</span>
         </div>
 
         <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight md:text-7xl">
           Your AI-powered companion
           <br />
-          for GCSE success.
+          for GCSE <span className="text-primary crayon-text">success</span>.
         </h1>
 
         <p className="mb-10 max-w-2xl text-lg text-muted-foreground md:text-xl">

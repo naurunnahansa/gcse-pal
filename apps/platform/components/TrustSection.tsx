@@ -17,7 +17,7 @@ const TrustSection = () => {
             key={stat.label}
             className="flex flex-col items-center"
           >
-            <span className="text-3xl font-bold text-foreground">
+            <span className="text-3xl font-bold text-primary crayon-text">
               {stat.value}
             </span>
             <span className="text-sm text-muted-foreground">{stat.label}</span>
