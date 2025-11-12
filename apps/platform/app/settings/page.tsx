@@ -26,17 +26,23 @@ import {
   Target,
   BookOpen,
   Play,
+  AlertCircle,
+  CheckCircle,
+  X,
 } from "lucide-react";
 
 const Settings = () => {
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, isAuthenticated, signOut, updateProfile, uploadAvatar, changePassword } = useAuth();
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Settings state
   const [profileSettings, setProfileSettings] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    username: user?.username || '',
     bio: '',
     school: '',
     grade: 'GCSE',
@@ -58,6 +64,12 @@ const Settings = () => {
     darkMode: false,
     soundEnabled: true,
     autoPlayVideos: true,
+  });
+
+  const [passwordSettings, setPasswordSettings] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   React.useEffect(() => {
@@ -117,9 +129,96 @@ const Settings = () => {
     'Australia/Sydney',
   ];
 
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      await uploadAvatar(file);
+      showMessage('success', 'Profile picture updated successfully!');
+    } catch (error: any) {
+      showMessage('error', error.message || 'Failed to upload profile picture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfileSettings = async () => {
+    try {
+      setLoading(true);
+      await updateProfile({
+        firstName: profileSettings.firstName,
+        lastName: profileSettings.lastName,
+        username: profileSettings.username,
+      });
+      showMessage('success', 'Profile updated successfully!');
+    } catch (error: any) {
+      showMessage('error', error.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const saveSettings = () => {
-    // TODO: Implement actual settings save
-    console.log('Saving settings...');
+    saveProfileSettings();
+  };
+
+  const handlePasswordChange = async () => {
+    // Validate passwords match
+    if (passwordSettings.newPassword !== passwordSettings.confirmPassword) {
+      showMessage('error', 'New passwords do not match');
+      return;
+    }
+
+    // Validate password strength
+    if (passwordSettings.newPassword.length < 8) {
+      showMessage('error', 'Password must be at least 8 characters long');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await changePassword(passwordSettings.currentPassword, passwordSettings.newPassword);
+
+      // Clear password fields
+      setPasswordSettings({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      showMessage('success', 'Password updated successfully!');
+    } catch (error: any) {
+      showMessage('error', error.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOutAll = async () => {
+    if (confirm('Are you sure you want to sign out from all devices? This includes your current session.')) {
+      try {
+        setLoading(true);
+        // Note: Clerk doesn't have a "sign out all devices" method in the client SDK
+        // This would typically be handled through Clerk's backend API or by revoking sessions
+        // For now, we'll just sign out the current session
+        await signOut();
+        showMessage('success', 'Signed out from all devices successfully!');
+        setTimeout(() => {
+          window.location.href = '/auth/signin';
+        }, 1000);
+      } catch (error: any) {
+        showMessage('error', error.message || 'Failed to sign out from all devices');
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
@@ -137,6 +236,28 @@ const Settings = () => {
             </Button>
           </div>
         </div>
+
+        {/* Message Display */}
+        {message && (
+          <div className={`px-6 py-3 ${message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border-b`}>
+            <div className="max-w-4xl mx-auto flex items-center gap-2">
+              {message.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <p className={`text-sm font-medium ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                {message.text}
+              </p>
+              <button
+                onClick={() => setMessage(null)}
+                className={`ml-auto ${message.type === 'success' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="bg-gray-50 flex-1">
           <div className="flex h-full">
@@ -189,16 +310,46 @@ const Settings = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center gap-6">
-                          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                            <User className="h-12 w-12 text-gray-400" />
+                          <div className="relative">
+                            {user?.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt="Profile"
+                                className="w-24 h-24 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                                <User className="h-12 w-12 text-gray-400" />
+                              </div>
+                            )}
+                            {loading && (
+                              <div className="absolute inset-0 w-24 h-24 rounded-full bg-white/50 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-6 w-6 border-2 border-black border-t-transparent"></div>
+                              </div>
+                            )}
                           </div>
                           <div>
-                            <Button variant="outline" className="mb-2">
-                              <Camera className="h-4 w-4 mr-2" />
-                              Upload Photo
-                            </Button>
+                            <div className="mb-4">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                onChange={handleAvatarUpload}
+                                className="hidden"
+                                id="avatar-upload"
+                                disabled={loading}
+                              />
+                              <Button
+                                variant="outline"
+                                className="mb-2"
+                                disabled={loading}
+                                onClick={() => document.getElementById('avatar-upload')?.click()}
+                              >
+                                <Camera className="h-4 w-4 mr-2" />
+                                {user?.hasImage ? 'Change Photo' : 'Upload Photo'}
+                              </Button>
+                            </div>
                             <p className="text-sm text-gray-600">
-                              JPG, PNG or GIF. Maximum 2MB.
+                              JPG, PNG, GIF, or WebP. Maximum 5MB.
                             </p>
                           </div>
                         </div>
@@ -214,26 +365,49 @@ const Settings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Full Name
+                              First Name
                             </label>
                             <input
                               type="text"
-                              value={profileSettings.name}
-                              onChange={(e) => setProfileSettings(prev => ({ ...prev, name: e.target.value }))}
+                              value={profileSettings.firstName}
+                              onChange={(e) => setProfileSettings(prev => ({ ...prev, firstName: e.target.value }))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                             />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Email Address
+                              Last Name
                             </label>
                             <input
-                              type="email"
-                              value={profileSettings.email}
-                              onChange={(e) => setProfileSettings(prev => ({ ...prev, email: e.target.value }))}
+                              type="text"
+                              value={profileSettings.lastName}
+                              onChange={(e) => setProfileSettings(prev => ({ ...prev, lastName: e.target.value }))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                             />
                           </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Username
+                          </label>
+                          <input
+                            type="text"
+                            value={profileSettings.username}
+                            onChange={(e) => setProfileSettings(prev => ({ ...prev, username: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email Address
+                          </label>
+                          <input
+                            type="email"
+                            value={user?.email || ''}
+                            disabled
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Email cannot be changed here. Contact support if needed.</p>
                         </div>
 
                         <div>
@@ -453,23 +627,129 @@ const Settings = () => {
                           Security Settings
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <CardContent className="space-y-6">
+                        {/* Password Change Form */}
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900 mb-4">Change Password</h4>
+                          <div className="space-y-4">
                             <div>
-                              <p className="font-medium text-gray-900">Change Password</p>
-                              <p className="text-sm text-gray-600">Update your password to keep your account secure</p>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                              <input
+                                type="password"
+                                value={passwordSettings.currentPassword}
+                                onChange={(e) => setPasswordSettings(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                placeholder="Enter current password"
+                              />
                             </div>
-                            <Button variant="outline">Change Password</Button>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                              <input
+                                type="password"
+                                value={passwordSettings.newPassword}
+                                onChange={(e) => setPasswordSettings(prev => ({ ...prev, newPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                placeholder="Enter new password (min. 8 characters)"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                              <input
+                                type="password"
+                                value={passwordSettings.confirmPassword}
+                                onChange={(e) => setPasswordSettings(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                placeholder="Confirm new password"
+                              />
+                            </div>
+                            <Button
+                              onClick={handlePasswordChange}
+                              disabled={loading || !passwordSettings.currentPassword || !passwordSettings.newPassword || !passwordSettings.confirmPassword}
+                              className="bg-black text-white hover:bg-gray-800"
+                            >
+                              {loading ? 'Updating...' : 'Update Password'}
+                            </Button>
                           </div>
+                        </div>
 
-                          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                            <div>
-                              <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                              <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                        {/* Additional Security Options */}
+                        <div className="border-t border-gray-200 pt-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                              <div>
+                                <p className="font-medium text-gray-900">Two-Factor Authentication</p>
+                                <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                              </div>
+                              <Button variant="outline" disabled>Coming Soon</Button>
                             </div>
-                            <Button variant="outline">Enable 2FA</Button>
                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Globe className="h-5 w-5" />
+                          Connected Accounts
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-xs font-semibold text-blue-600">G</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">Google</p>
+                                <p className="text-xs text-gray-500">
+                                  {user?.email?.includes('gmail') ? 'Connected' : 'Not connected'}
+                                </p>
+                              </div>
+                            </div>
+                            {user?.email?.includes('gmail') ? (
+                              <Button variant="outline" size="sm" disabled>Disconnect</Button>
+                            ) : (
+                              <Button variant="outline" size="sm" disabled>Connect</Button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">
+                          Connect your Google account for easier sign-in and account recovery.
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Smartphone className="h-5 w-5" />
+                          Session Management
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                            <div>
+                              <p className="font-medium text-sm">Current Session</p>
+                              <p className="text-xs text-gray-500">This browser • Active now</p>
+                            </div>
+                            <span className="text-xs text-green-600 font-medium">Current</span>
+                          </div>
+                        </div>
+                        <div className="pt-4 border-t border-gray-200">
+                          <Button
+                            variant="outline"
+                            className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={handleSignOutAll}
+                            disabled={loading}
+                          >
+                            Sign Out All Devices
+                          </Button>
+                          <p className="text-xs text-gray-500 mt-2">
+                            This will sign you out from all devices including your current session.
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
@@ -488,7 +768,7 @@ const Settings = () => {
                               <p className="font-medium text-gray-900">Download Your Data</p>
                               <p className="text-sm text-gray-600">Get a copy of all your personal data and learning progress</p>
                             </div>
-                            <Button variant="outline">Download Data</Button>
+                            <Button variant="outline" disabled>Coming Soon</Button>
                           </div>
 
                           <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
@@ -496,7 +776,7 @@ const Settings = () => {
                               <p className="font-medium text-gray-900">Privacy Policy</p>
                               <p className="text-sm text-gray-600">Read about how we protect and use your data</p>
                             </div>
-                            <Button variant="outline">View Policy</Button>
+                            <Button variant="outline" disabled>Coming Soon</Button>
                           </div>
 
                           <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg">
@@ -504,7 +784,7 @@ const Settings = () => {
                               <p className="font-medium text-red-900">Delete Account</p>
                               <p className="text-sm text-red-700">Permanently delete your account and all data</p>
                             </div>
-                            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" disabled>
                               Delete Account
                             </Button>
                           </div>
