@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 const Header = () => {
   return (
@@ -21,27 +22,34 @@ const Header = () => {
             >
               Pricing
             </a>
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/admin"
-              className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
-            >
-              Admin
-            </Link>
-            <Link
-              href="/auth/signin"
-              className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
-            >
-              Sign In
-            </Link>
-            <Button size="sm" className="bg-black hover:bg-gray-800 text-white" asChild>
-              <Link href="/auth/signup">Get Started</Link>
-            </Button>
+            <SignedIn>
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/admin"
+                className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+              >
+                Admin
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <Link
+                href="/auth/signin"
+                className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+              >
+                Sign In
+              </Link>
+              <Button size="sm" className="bg-black hover:bg-gray-800 text-white" asChild>
+                <Link href="/auth/signup">Get Started</Link>
+              </Button>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
           </nav>
         </div>
       </div>

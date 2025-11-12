@@ -1,33 +1,35 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { mockAuth, AuthState } from '@/lib/auth-mock';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useUser } from '@clerk/nextjs';
 
-interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signOut: () => Promise<void>;
+interface User {
+  id: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = React.useState<AuthState>(mockAuth.getState());
-
-  useEffect(() => {
-    // Subscribe to auth state changes
-    const unsubscribe = mockAuth.subscribe(() => {
-      setAuthState(mockAuth.getState());
-    });
-
-    return unsubscribe;
-  }, []);
+  const { isSignedIn, user, isLoaded } = useUser();
 
   const value: AuthContextType = {
-    ...authState,
-    signIn: mockAuth.signIn,
-    signUp: mockAuth.signUp,
-    signOut: mockAuth.signOut,
+    user: isSignedIn && user ? {
+      id: user.id,
+      name: user.fullName || user.firstName || user.username,
+      email: user.primaryEmailAddress?.emailAddress,
+      avatar: user.imageUrl,
+    } : null,
+    isAuthenticated: isSignedIn || false,
+    isLoading: !isLoaded,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

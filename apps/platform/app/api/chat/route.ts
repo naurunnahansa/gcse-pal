@@ -7,8 +7,14 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
+  // Verify user is authenticated
+  const { userId } = await auth();
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   
   try {
     const { messages }: { messages: UIMessage[] } = await req.json();
