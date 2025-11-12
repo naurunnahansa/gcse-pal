@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardLayout } from "@/components/layouts/DashboardLayout";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
 import {
   Message,
@@ -215,7 +215,7 @@ const TopicChat = () => {
   }
 
   return (
-    <DashboardLayout>
+    <UnifiedLayout userRole="student">
       <div className="flex-1 flex">
         {/* Topic Sidebar */}
         {showSidebar && (
@@ -427,7 +427,7 @@ const TopicChat = () => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </UnifiedLayout>
   );
 };
 

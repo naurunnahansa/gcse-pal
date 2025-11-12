@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardLayout } from "@/components/layouts/DashboardLayout";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
 import {
   Play,
@@ -236,7 +236,7 @@ This term affects where the parabola crosses the y-axis.
   const progress = ((completedSections.length + (currentSection === contentSections.length - 1 ? 1 : 0)) / contentSections.length) * 100;
 
   return (
-    <DashboardLayout>
+    <UnifiedLayout userRole="student">
       <div className="flex-1 flex flex-col">
         {/* Topic Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -504,7 +504,7 @@ This term affects where the parabola crosses the y-axis.
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </UnifiedLayout>
   );
 };
 
