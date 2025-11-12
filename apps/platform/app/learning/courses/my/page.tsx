@@ -33,25 +33,6 @@ const MyCourses = () => {
     setMounted(true);
   }, []);
 
-  // Don't render anything until mounted to prevent hydration mismatch
-  if (!mounted) {
-    return null;
-  }
-
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-          <p className="text-muted-foreground mb-4">Please sign in to view your courses.</p>
-          <Button asChild>
-            <a href="/auth/signin">Sign In</a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   // Sample enrolled courses data
   const myCourses = [
     {
@@ -193,6 +174,25 @@ const MyCourses = () => {
       totalAchievements
     };
   }, [myCourses]);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
+
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
+          <p className="text-muted-foreground mb-4">Please sign in to view your courses.</p>
+          <Button asChild>
+            <a href="/auth/signin">Sign In</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

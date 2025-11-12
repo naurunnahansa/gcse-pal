@@ -31,25 +31,6 @@ const BrowseCourses = () => {
     setMounted(true);
   }, []);
 
-  // Don't render anything until mounted to prevent hydration mismatch
-  if (!mounted) {
-    return null;
-  }
-
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-          <p className="text-muted-foreground mb-4">Please sign in to browse courses.</p>
-          <Button asChild>
-            <a href="/auth/signin">Sign In</a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   // Sample course data
   const allCourses = [
     {
@@ -171,6 +152,25 @@ const BrowseCourses = () => {
       return matchesSearch && matchesSubject && matchesLevel;
     });
   }, [allCourses, searchTerm, selectedSubject, selectedLevel]);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
+
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
+          <p className="text-muted-foreground mb-4">Please sign in to browse courses.</p>
+          <Button asChild>
+            <a href="/auth/signin">Sign In</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const getCourseTypeIcon = (type: string) => {
     switch (type) {
