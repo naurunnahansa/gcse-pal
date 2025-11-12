@@ -474,14 +474,15 @@ interface ASCIITextProps {
 
 export default function ASCIIText({
   text = 'David!',
-  asciiFontSize = 8,
-  textFontSize = 200,
+  asciiFontSize = 10, // Slightly increased for performance
+  textFontSize = 150, // Reduced for performance
   textColor = '#fdf9f3',
-  planeBaseHeight = 8,
+  planeBaseHeight = 6, // Reduced for performance
   enableWaves = true
 }: ASCIITextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const asciiRef = useRef<CanvAscii | null>(null);
+  const isVisibleRef = useRef(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -540,8 +541,29 @@ export default function ASCIIText({
     );
     asciiRef.current.load();
 
+    // Intersection Observer for performance
+    const visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          isVisibleRef.current = entry.isIntersecting;
+          if (asciiRef.current) {
+            if (entry.isIntersecting) {
+              asciiRef.current.load();
+            } else {
+              // Pause animations when not visible
+              if (asciiRef.current.animationFrameId) {
+                cancelAnimationFrame(asciiRef.current.animationFrameId);
+              }
+            }
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    visibilityObserver.observe(containerRef.current);
+
     const ro = new ResizeObserver(entries => {
-      if (!entries[0] || !asciiRef.current) return;
+      if (!entries[0] || !asciiRef.current || !isVisibleRef.current) return;
       const { width: w, height: h } = entries[0].contentRect;
       if (w > 0 && h > 0) {
         asciiRef.current.setSize(w, h);
@@ -551,6 +573,7 @@ export default function ASCIIText({
 
     return () => {
       ro.disconnect();
+      visibilityObserver.disconnect();
       if (asciiRef.current) {
         asciiRef.current.dispose();
       }

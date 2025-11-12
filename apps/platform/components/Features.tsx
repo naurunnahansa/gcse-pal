@@ -1,5 +1,4 @@
 import { Brain, BookOpen, Network } from "lucide-react";
-import ASCIIText from "@/components/AsciiText";
 
 const Features = () => {
   const features = [
@@ -25,13 +24,6 @@ const Features = () => {
 
   return (
     <section className="container py-24 relative">
-      {/* Subtle ASCII background */}
-      <ASCIIText
-        text="FEATURES"
-        enableWaves={true}
-        asciiFontSize={8}
-      />
-
       <div className="relative z-10">
         <h2 className="mb-16 text-center text-4xl font-bold md:text-5xl">
           Everything you need to ace your GCSEs
