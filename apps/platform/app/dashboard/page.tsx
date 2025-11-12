@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import FloatingChat from "@/components/FloatingChat";
 
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
@@ -181,6 +182,7 @@ const Dashboard = () => {
         </div>
       </div>
       </div>
+      <FloatingChat />
     </UnifiedLayout>
   );
 };

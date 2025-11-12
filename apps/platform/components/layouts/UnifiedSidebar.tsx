@@ -32,15 +32,19 @@ import {
   Award,
   Search,
   Play,
+  ChevronLeft,
+  ChevronRight as ChevronCollapseRight,
 } from 'lucide-react';
 
 interface UnifiedSidebarProps {
   userRole: 'student' | 'admin';
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpenChange }) => {
+const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpenChange, isCollapsed, onToggleCollapse }) => {
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -76,7 +80,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Settings',
       items: [
-        { name: 'Profile Settings', href: '/settings', icon: Settings },
+        { name: 'Settings', href: '/settings', icon: Settings },
       ],
       collapsible: true,
       open: settingsOpen,
@@ -140,79 +144,138 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-background">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-6 border-b">
-        <Link href={userRole === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary crayon-effect">
-            <span className="text-lg font-bold text-primary-foreground">G</span>
+      <div className="flex h-16 items-center justify-between border-b">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''} ${isCollapsed ? 'w-full' : 'gap-2'}`}>
+          <Link href={userRole === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary crayon-effect">
+              <span className="text-lg font-bold text-primary-foreground">G</span>
+            </div>
+            {!isCollapsed && (
+              <span className="text-xl font-bold">
+                {userRole === 'admin' ? 'Admin Panel' : 'GCSEPal'}
+              </span>
+            )}
+          </Link>
+        </div>
+        {!isCollapsed && (
+          <div className="flex items-center gap-1">
+            {/* Collapse Toggle Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden lg:flex"
+              onClick={onToggleCollapse}
+              title="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => onOpenChange(false)}
+            >
+              ×
+            </Button>
           </div>
-          <span className="text-xl font-bold">
-            {userRole === 'admin' ? 'Admin Panel' : 'GCSEPal'}
-          </span>
-        </Link>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="lg:hidden"
-          onClick={() => onOpenChange(false)}
-        >
-          ×
-        </Button>
+        )}
       </div>
+      {/* Expand button for collapsed state */}
+      {isCollapsed && (
+        <div className="flex items-center justify-center py-2 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden lg:flex"
+            onClick={onToggleCollapse}
+            title="Expand sidebar"
+          >
+            <ChevronCollapseRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-6 p-4 overflow-y-auto">
+      <nav className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2 py-4' : 'p-4'}`}>
         {navigation.map((section) => (
           <div key={section.title}>
             {section.collapsible ? (
-              <Collapsible open={section.open} onOpenChange={section.setOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between px-3 h-auto py-2 font-semibold text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    {section.title}
-                    {section.open ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 mt-1">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        isActive(item.href)
-                          ? 'bg-primary text-primary-foreground crayon-effect'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.name}
-                    </Link>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-muted-foreground px-3">
-                  {section.title}
-                </p>
+              isCollapsed ? (
                 <div className="space-y-1">
                   {section.items.map((item) => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      className={`flex items-center justify-center rounded-lg text-sm font-medium transition-colors group px-3 py-3 ${
                         isActive(item.href)
                           ? 'bg-primary text-primary-foreground crayon-effect'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       }`}
+                      title={item.name}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {item.name}
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Collapsible open={section.open} onOpenChange={section.setOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between px-3 h-auto py-2 font-semibold text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      {section.title}
+                      {section.open ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 mt-1">
+                    {section.items.map((item) => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`flex items-center justify-start gap-3 rounded-lg text-sm font-medium transition-colors group px-3 py-2 ${
+                          isActive(item.href)
+                            ? 'bg-primary text-primary-foreground crayon-effect'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                        title={item.name}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span>{item.name}</span>
+                      </Link>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              )
+            ) : (
+              <div className="space-y-3">
+                {!isCollapsed && (
+                  <p className="text-sm font-semibold text-muted-foreground px-3">
+                    {section.title}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center rounded-lg text-sm font-medium transition-colors group ${
+                        isCollapsed
+                          ? 'justify-center px-3 py-3'
+                          : 'justify-start gap-3 px-3 py-2'
+                      } ${
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground crayon-effect'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`}
+                      title={isCollapsed ? item.name : undefined}
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!isCollapsed && <span>{item.name}</span>}
                     </Link>
                   ))}
                 </div>
@@ -226,20 +289,27 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       </nav>
 
       {/* User section */}
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+      <div className={`border-t ${isCollapsed ? 'px-2 py-4' : 'p-4'}`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center mb-4' : 'gap-3 mb-4'}`}>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary flex-shrink-0">
             <User className="h-5 w-5" />
           </div>
-          <div>
-            <p className="text-sm font-medium">{user?.name || (userRole === 'admin' ? 'Admin User' : 'Student User')}</p>
-            <p className="text-xs text-muted-foreground">{user?.email || (userRole === 'admin' ? 'admin@gcsepal.com' : 'student@gcsepal.com')}</p>
-          </div>
+          {!isCollapsed && (
+            <div>
+              <p className="text-sm font-medium">{user?.name || (userRole === 'admin' ? 'Admin User' : 'Student User')}</p>
+              <p className="text-xs text-muted-foreground">{user?.email || (userRole === 'admin' ? 'admin@gcsepal.com' : 'student@gcsepal.com')}</p>
+            </div>
+          )}
         </div>
-        <Button variant="ghost" className="w-full justify-start" asChild>
-          <Link href="/auth/signin">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+        <Button
+          variant="ghost"
+          className={`${isCollapsed ? 'w-auto px-3 py-3' : 'w-full justify-start'}`}
+          asChild
+          title={isCollapsed ? "Sign Out" : undefined}
+        >
+          <Link href="/auth/signin" className={isCollapsed ? 'flex items-center justify-center' : ''}>
+            <LogOut className="h-4 w-4" />
+            {!isCollapsed && <span className="ml-2">Sign Out</span>}
           </Link>
         </Button>
       </div>
@@ -266,7 +336,9 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
 
       {/* Desktop sidebar - shown by default on larger screens */}
       <div className="hidden lg:block">
-        <div className="w-64 border-r bg-background">
+        <div className={`border-r bg-background transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-16' : 'w-64'
+        }`}>
           <SidebarContent />
         </div>
       </div>

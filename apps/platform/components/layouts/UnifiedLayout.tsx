@@ -33,6 +33,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   onModeChange
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
 
   // Determine page title based on current route
@@ -65,6 +66,8 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         userRole={userRole}
         isOpen={sidebarOpen}
         onOpenChange={setSidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       {/* Main content */}

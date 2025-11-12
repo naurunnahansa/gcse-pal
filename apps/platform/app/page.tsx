@@ -6,6 +6,7 @@ import Features from "@/components/Features";
 import HowItWorks from "@/components/HowItWorks";
 import Pricing from "@/components/Pricing";
 import Footer from "@/components/Footer";
+import FloatingChat from "@/components/FloatingChat";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
         <Pricing />
       </main>
       <Footer />
+      <FloatingChat />
     </div>
   );
 }
