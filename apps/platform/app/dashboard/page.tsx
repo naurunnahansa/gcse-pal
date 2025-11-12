@@ -106,9 +106,11 @@ const Dashboard = () => {
                     </div>
                     <Progress value={subject.progress} className="h-2" />
                     <div className="mt-4 flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Learn
+                      <Button size="sm" variant="outline" asChild>
+                        <a href={`/learning/${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          Continue Learning
+                        </a>
                       </Button>
                     </div>
                   </CardContent>

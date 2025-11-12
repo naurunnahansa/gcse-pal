@@ -5,18 +5,32 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { UnifiedSidebar } from './UnifiedSidebar';
-import { Home, Settings } from 'lucide-react';
+import { Home, Settings, BookOpen, Brain, MessageCircle } from 'lucide-react';
+
+interface ModeOption {
+  id: string;
+  name: string;
+  icon: React.ComponentType<any>;
+}
 
 interface UnifiedLayoutProps {
   children: React.ReactNode;
   userRole: 'student' | 'admin';
   title?: string;
+  subjectName?: string;
+  modeOptions?: ModeOption[];
+  activeMode?: string;
+  onModeChange?: (mode: string) => void;
 }
 
 const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   children,
   userRole,
-  title
+  title,
+  subjectName,
+  modeOptions,
+  activeMode,
+  onModeChange
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -59,11 +73,31 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <div className="px-6 flex items-center gap-4">
             <h1 className="text-lg font-semibold">
-              {getPageTitle()}
+              {subjectName || getPageTitle()}
             </h1>
           </div>
 
           <div className="px-6 flex items-center gap-4">
+            {/* Mode selection for subject pages */}
+            {modeOptions && onModeChange && (
+              <div className="flex items-center bg-gray-100 rounded-lg p-1 mr-4">
+                {modeOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => onModeChange(option.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      activeMode === option.id
+                        ? 'bg-white text-black shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <option.icon className="h-4 w-4" />
+                    <span>{option.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Quick navigation between admin and student dashboards */}
             {userRole === 'admin' ? (
               <Button variant="ghost" size="sm" asChild>

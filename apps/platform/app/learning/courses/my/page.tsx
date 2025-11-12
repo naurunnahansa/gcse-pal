@@ -33,6 +33,19 @@ const MyCourses = () => {
     setMounted(true);
   }, []);
 
+  // Helper function to get subject URL from course subject
+  const getSubjectUrl = (subject: string) => {
+    const subjectMap: Record<string, string> = {
+      'Mathematics': 'mathematics',
+      'English Literature': 'english-literature',
+      'Biology': 'biology',
+      'Chemistry': 'chemistry',
+      'Physics': 'physics',
+      'History': 'history'
+    };
+    return `/learning/${subjectMap[subject] || subject.toLowerCase().replace(/\s+/g, '-')}`;
+  };
+
   // Sample enrolled courses data
   const myCourses = [
     {
@@ -442,15 +455,15 @@ const MyCourses = () => {
                           <Award className="h-4 w-4 mr-2" />
                           View Certificate
                         </Button>
-                      ) : course.status === 'in_progress' ? (
-                        <Button className="flex-1 bg-black text-white hover:bg-gray-800">
-                          <Play className="h-4 w-4 mr-2" />
-                          Continue Learning
-                        </Button>
                       ) : (
-                        <Button className="flex-1 bg-black text-white hover:bg-gray-800">
-                          <Play className="h-4 w-4 mr-2" />
-                          Start Course
+                        <Button
+                          className="flex-1 bg-black text-white hover:bg-gray-800"
+                          asChild
+                        >
+                          <a href={getSubjectUrl(course.subject)}>
+                            <Play className="h-4 w-4 mr-2" />
+                            {course.status === 'in_progress' ? 'Continue Learning' : 'Start Course'}
+                          </a>
                         </Button>
                       )}
                     </div>
