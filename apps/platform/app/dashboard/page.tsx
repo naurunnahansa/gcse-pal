@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DashboardLayout } from "@/components/layouts/DashboardLayout";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import {
   BookOpen,
   Brain,
@@ -96,7 +96,7 @@ const Dashboard = () => {
   }
 
   return (
-    <DashboardLayout>
+    <UnifiedLayout userRole="student">
       <div className="bg-gray-50 flex-1">
         <div className="px-6 py-8">
         {/* Welcome Section */}
@@ -235,7 +235,7 @@ const Dashboard = () => {
         </div>
       </div>
       </div>
-    </DashboardLayout>
+    </UnifiedLayout>
   );
 };
 

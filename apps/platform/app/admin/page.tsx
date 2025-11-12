@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
 import {
   BookOpen,
@@ -170,7 +170,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <AdminLayout>
+    <UnifiedLayout userRole="admin">
       <div className="p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
@@ -601,7 +601,7 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </AdminLayout>
+    </UnifiedLayout>
   );
 };
 
