@@ -3,39 +3,35 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardLayout } from "@/components/layouts/DashboardLayout";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { useAuth } from "@/components/AuthProvider";
 import {
-  BarChart3,
-  Users,
   BookOpen,
-  Video,
-  Plus,
+  Brain,
+  Users,
   TrendingUp,
-  Clock,
-  Target,
-  Award,
-  Settings,
-  FileText,
+  ChevronRight,
+  Plus,
   Edit3,
   Trash2,
   Eye,
-  Download,
-  Upload,
-  Monitor,
-  Brain,
-  CheckCircle,
-  AlertCircle,
-  Zap,
+  BarChart3,
+  Video,
+  Target,
+  Clock,
+  Award,
+  MoreVertical,
   Search,
   Filter,
   Calendar,
-  MoreHorizontal,
-  MoreVertical,
-  Play,
-  Pause,
-  ChevronRight,
-  Star,
+  UserCheck,
+  User,
+  PlayCircle,
+  FileText,
+  Settings,
+  AlertCircle,
 } from "lucide-react";
 
 interface Course {
@@ -48,213 +44,28 @@ interface Course {
   students: number;
   avgScore: number;
   completion: number;
-  topics: number;
-  videos: number;
-  questions: number;
-  createdAt: string;
-  updatedAt: string;
   author: string;
-  thumbnail?: string;
-}
-
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  enrolledCourses: string[];
-  totalStudyTime: number;
-  averageScore: number;
-  lastActive: string;
-  joinDate: string;
-}
-
-interface Video {
-  id: string;
-  title: string;
-  course: string;
-  duration: string;
-  status: 'processing' | 'ready' | 'published' | 'failed';
-  uploadDate: string;
-  thumbnail?: string;
-  views: number;
+  createdAt: string;
 }
 
 const AdminDashboard = () => {
   const { user, isAuthenticated } = useAuth();
-  const [mounted, setMounted] = React.useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Mock data
-  const dashboardStats = {
-    totalStudents: 1247,
-    activeStudents: 892,
-    totalCourses: 12,
-    totalVideos: 156,
-    totalQuestions: 2340,
-    averageScore: 76,
-    completionRate: 68,
-    weeklyActiveStudents: 567,
-  };
-
-  const courses: Course[] = [
-    {
-      id: '1',
-      title: 'Mathematics Fundamentals',
-      description: 'Complete GCSE Mathematics course covering all essential topics',
-      subject: 'Mathematics',
-      difficulty: 'Intermediate',
-      status: 'published',
-      students: 456,
-      avgScore: 82,
-      completion: 74,
-      topics: 45,
-      videos: 68,
-      questions: 234,
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-20',
-      author: 'Dr. Sarah Johnson',
-      thumbnail: '/api/placeholder/1',
-    },
-    {
-      id: '2',
-      title: 'Biology: Cell Structure and Function',
-      description: 'Deep dive into cellular biology and processes',
-      subject: 'Biology',
-      difficulty: 'Beginner',
-      status: 'published',
-      students: 389,
-      avgScore: 78,
-      completion: 81,
-      topics: 32,
-      videos: 45,
-      questions: 189,
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-18',
-      author: 'Prof. Michael Chen',
-    },
-    {
-      id: '3',
-      title: 'Advanced Chemistry',
-      description: 'Comprehensive chemistry course with practical applications',
-      subject: 'Chemistry',
-      difficulty: 'Advanced',
-      status: 'draft',
-      students: 0,
-      avgScore: 0,
-      completion: 0,
-      topics: 28,
-      videos: 12,
-      questions: 67,
-      createdAt: '2024-01-22',
-      updatedAt: '2024-01-22',
-      author: 'Dr. Emily Rodriguez',
-    },
-  ];
-
-  const students: Student[] = [
-    {
-      id: '1',
-      name: 'Alex Thompson',
-      email: 'alex@example.com',
-      enrolledCourses: ['mathematics', 'biology'],
-      totalStudyTime: 48,
-      averageScore: 78,
-      lastActive: '2024-01-23',
-      joinDate: '2024-01-05',
-    },
-    {
-      id: '2',
-      name: 'Sarah Martinez',
-      email: 'sarah@example.com',
-      enrolledCourses: ['english-literature', 'chemistry'],
-      totalStudyTime: 36,
-      averageScore: 85,
-      lastActive: '2024-01-23',
-      joinDate: '2024-01-08',
-    },
-  ];
-
-  const videos: Video[] = [
-    {
-      id: '1',
-      title: 'Introduction to Quadratic Equations',
-      course: 'Mathematics Fundamentals',
-      duration: '5:30',
-      status: 'published',
-      uploadDate: '2024-01-15',
-      thumbnail: '/api/placeholder/1',
-      views: 234,
-    },
-    {
-      id: '2',
-      title: 'Cell Division Process',
-      course: 'Biology: Cell Structure and Function',
-      duration: '8:15',
-      status: 'processing',
-      uploadDate: '2024-01-20',
-      thumbnail: '/api/placeholder/2',
-      views: 0,
-    },
-  ];
-
-  const tabs = [
-    { id: 'overview', name: 'Overview', icon: BarChart3 },
-    { id: 'courses', name: 'Courses', icon: BookOpen },
-    { id: 'students', name: 'Students', icon: Users },
-    { id: 'videos', name: 'Videos', icon: Video },
-    { id: 'analytics', name: 'Analytics', icon: TrendingUp },
-    { id: 'content', name: 'Content', icon: FileText },
-  ];
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'Advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published': return 'bg-green-100 text-green-800';
-      case 'draft': return 'bg-yellow-100 text-yellow-800';
-      case 'archived': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'published': return <CheckCircle className="h-4 w-4" />;
-      case 'draft': return <AlertCircle className="h-4 w-4" />;
-      case 'archived': return <FileText className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
-  };
-
-  const getVideoStatusIcon = (status: string) => {
-    switch (status) {
-      case 'processing': return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'ready': return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case 'published': return <Play className="h-4 w-4 text-green-600" />;
-      case 'failed': return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default: return <FileText className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  // Don't render anything until mounted
+  // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
     return null;
   }
 
-  // Simple admin check
-  const isAdmin = user?.email?.includes('admin') || true;
+  // Simple admin check - allowing all authenticated users for now
+  const isAdmin = true;
 
   if (!isAuthenticated || !user || !isAdmin) {
     return (
@@ -263,519 +74,534 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
           <p className="text-muted-foreground mb-4">Admin access required to view this page.</p>
           <Button asChild>
-            <a href="/dashboard">Go to Dashboard</a>
+            <a href="/">Go Home</a>
           </Button>
         </div>
       </div>
     );
   }
 
-  const renderOverviewTab = () => (
-    <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalStudents.toLocaleString()}</p>
-                <p className="text-sm text-green-600">+{dashboardStats.weeklyActiveStudents} this week</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <BookOpen className="h-8 w-8 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-600">Active Courses</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalCourses}</p>
-                <p className="text-sm text-gray-600">{dashboardStats.totalVideos} videos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Target className="h-8 w-8 text-purple-500" />
-              <div>
-                <p className="text-sm text-gray-600">Average Score</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboardStats.averageScore}%</p>
-                <p className="text-sm text-green-600">+3% this month</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Award className="h-8 w-8 text-orange-500" />
-              <div>
-                <p className="text-sm text-gray-600">Completion Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboardStats.completionRate}%</p>
-                <p className="text-sm text-yellow-600">+2% improvement</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-indigo-500" />
-              <div>
-                <p className="text-sm text-gray-600">Total Questions</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalQuestions}</p>
-                <p className="text-sm text-gray-600">In question bank</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  // Mock data
+  const courses: Course[] = [
+    {
+      id: '1',
+      title: 'GCSE Mathematics - Algebra Fundamentals',
+      description: 'Master algebraic expressions, equations, and graphs',
+      subject: 'Mathematics',
+      difficulty: 'Intermediate',
+      status: 'published',
+      students: 245,
+      avgScore: 78,
+      completion: 82,
+      author: 'Dr. Sarah Johnson',
+      createdAt: '2024-01-15'
+    },
+    {
+      id: '2',
+      title: 'Biology: Cell Structure and Function',
+      description: 'Comprehensive guide to cellular biology and organelles',
+      subject: 'Biology',
+      difficulty: 'Beginner',
+      status: 'published',
+      students: 189,
+      avgScore: 85,
+      completion: 76,
+      author: 'Prof. Michael Chen',
+      createdAt: '2024-01-10'
+    },
+    {
+      id: '3',
+      title: 'English Literature - Shakespeare Analysis',
+      description: 'In-depth analysis of Macbeth, Romeo and Juliet, and more',
+      subject: 'English Literature',
+      difficulty: 'Advanced',
+      status: 'draft',
+      students: 0,
+      avgScore: 0,
+      completion: 45,
+      author: 'Dr. Emily Rodriguez',
+      createdAt: '2024-01-20'
+    },
+    {
+      id: '4',
+      title: 'Chemistry: Atomic Structure and Bonding',
+      description: 'Understanding atoms, molecules, and chemical bonds',
+      subject: 'Chemistry',
+      difficulty: 'Intermediate',
+      status: 'published',
+      students: 156,
+      avgScore: 72,
+      completion: 68,
+      author: 'Dr. James Wilson',
+      createdAt: '2024-01-08'
+    }
+  ];
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Plus className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Create Course</h3>
-                <p className="text-sm text-gray-600">Build new learning path</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+  const students = [
+    { id: '1', name: 'Alice Johnson', email: 'alice@example.com', enrolled: 4, progress: 68, lastActive: '2 hours ago' },
+    { id: '2', name: 'Bob Smith', email: 'bob@example.com', enrolled: 3, progress: 45, lastActive: '1 day ago' },
+    { id: '3', name: 'Carol White', email: 'carol@example.com', enrolled: 5, progress: 82, lastActive: '30 minutes ago' },
+    { id: '4', name: 'David Brown', email: 'david@example.com', enrolled: 2, progress: 23, lastActive: '3 days ago' },
+  ];
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Upload className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Upload Video</h3>
-                <p className="text-sm text-gray-600">Add video content</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+  const platformStats = [
+    { title: "Total Students", value: "1,247", change: "+12%", icon: Users, color: "text-blue-600" },
+    { title: "Active Courses", value: "8", change: "+2", icon: BookOpen, color: "text-green-600" },
+    { title: "Avg Completion", value: "73%", change: "+5%", icon: Target, color: "text-purple-600" },
+    { title: "Satisfaction", value: "4.8", change: "+0.2", icon: Award, color: "text-orange-600" },
+  ];
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Target className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Manage Questions</h3>
-                <p className="text-sm text-gray-600">Edit quiz content</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+  const getStatusColor = (status: Course['status']) => {
+    switch (status) {
+      case 'published': return 'bg-green-100 text-green-800 border-green-200';
+      case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'archived': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Users className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">View Students</h3>
-                <p className="text-sm text-gray-600">Student management</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  const getDifficultyColor = (difficulty: Course['difficulty']) => {
+    switch (difficulty) {
+      case 'Beginner': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Intermediate': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Advanced': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
-  const renderCoursesTab = () => (
-    <div className="space-y-6">
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+  return (
+    <AdminLayout>
+      <div className="p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage courses, monitor students, and oversee platform performance
+          </p>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="courses" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Courses
+            </TabsTrigger>
+            <TabsTrigger value="students" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Students
+            </TabsTrigger>
+            <TabsTrigger value="content" className="flex items-center gap-2">
+              <PlayCircle className="h-4 w-4" />
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {platformStats.map((stat, index) => (
+                <Card key={index} className="border-border">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-xs text-green-600">{stat.change}</p>
+                      </div>
+                      <div className={`h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center ${stat.color}`}>
+                        <stat.icon className="h-6 w-6" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">New course published</p>
+                        <p className="text-xs text-muted-foreground">Chemistry: Atomic Structure</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">2h ago</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">15 new enrollments</p>
+                        <p className="text-xs text-muted-foreground">Mathematics courses</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">5h ago</span>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                      <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                        <AlertCircle className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Course updated</p>
+                        <p className="text-xs text-muted-foreground">Biology content refreshed</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">1d ago</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Quick Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Button className="w-full justify-start crayon-effect">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create New Course
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Users className="mr-2 h-4 w-4" />
+                      Manage Students
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      View Analytics
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Platform Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Course Management</h2>
+              <Button className="crayon-effect">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Course
+              </Button>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search courses..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-foreground"
                 />
               </div>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-foreground"
+              >
+                <option value="all">All Subjects</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Biology">Biology</option>
+                <option value="English Literature">English Literature</option>
+                <option value="Chemistry">Chemistry</option>
+              </select>
             </div>
-            <div className="flex gap-3">
-              <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent">
-                <option value="">All Subjects</option>
-                <option value="mathematics">Mathematics</option>
-                <option value="biology">Biology</option>
-                <option value="chemistry">Chemistry</option>
-                <option value="english-literature">English Literature</option>
-              </select>
-              <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent">
-                <option value="">All Status</option>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
-              </select>
-              <Button className="px-4 py-2">
-                <Filter className="h-4 w-4 mr-1" />
-                Filters
+
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <Card key={course.id} className="border-border">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="mb-2 flex items-center gap-2">
+                          <h3 className="text-lg font-semibold">{course.title}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(course.status)}`}>
+                            {course.status}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getDifficultyColor(course.difficulty)}`}>
+                            {course.difficulty}
+                          </span>
+                        </div>
+                        <p className="mb-3 text-sm text-muted-foreground">{course.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <BookOpen className="h-4 w-4" />
+                            {course.subject}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {course.students} students
+                          </span>
+                          <span>by {course.author}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost">
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {course.students > 0 && (
+                      <div className="mt-4 flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <span className="text-muted-foreground">Avg Score: </span>
+                            <span className="font-semibold">{course.avgScore}%</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Completion: </span>
+                            <span className="font-semibold">{course.completion}%</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 ml-4">
+                          <Progress value={course.completion} className="h-2" />
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Students Tab */}
+          <TabsContent value="students" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Student Management</h2>
+              <Button variant="outline">
+                <UserCheck className="mr-2 h-4 w-4" />
+                Export Students
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Courses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map((course) => (
-          <Card key={course.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(course.difficulty)}`}>
-                      {course.difficulty}
-                    </span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${getStatusColor(course.status)}`}>
-                      {getStatusIcon(course.status)}
-                      {course.status}
-                    </span>
-                  </div>
-                  <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                  <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
+            <Card className="border-border">
+              <CardContent className="p-0">
+                <div className="space-y-1">
+                  {students.map((student) => (
+                    <div key={student.id} className="flex items-center justify-between p-4 hover:bg-gray-50 border-b last:border-0">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{student.name}</p>
+                          <p className="text-sm text-muted-foreground">{student.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="text-right">
+                          <p className="font-medium">{student.enrolled}</p>
+                          <p className="text-muted-foreground">Courses</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{student.progress}%</p>
+                          <p className="text-muted-foreground">Progress</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-muted-foreground">{student.lastActive}</p>
+                        </div>
+                        <Button size="sm" variant="ghost">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="h-4 w-4" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Content Tab */}
+          <TabsContent value="content" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Content Library</h2>
+              <Button className="crayon-effect">
+                <Plus className="mr-2 h-4 w-4" />
+                Upload Content
+              </Button>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Video className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">24 videos</span>
+                  </div>
+                  <h3 className="font-semibold mb-1">Video Lessons</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Educational video content</p>
+                  <Button variant="outline" size="sm" className="w-full">Manage Videos</Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-green-600" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">156 files</span>
+                  </div>
+                  <h3 className="font-semibold mb-1">Documents</h3>
+                  <p className="text-sm text-muted-foreground mb-4">PDFs, worksheets, and notes</p>
+                  <Button variant="outline" size="sm" className="w-full">Browse Files</Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Brain className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">48 quizzes</span>
+                  </div>
+                  <h3 className="font-semibold mb-1">Assessments</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Tests and quizzes</p>
+                  <Button variant="outline" size="sm" className="w-full">View Assessments</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Analytics & Insights</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Last 30 days
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Course Stats */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">{course.students} students</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">{course.avgScore}% avg score</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Video className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">{course.videos} videos</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">{course.questions} questions</span>
-                  </div>
-                </div>
-
-                {/* Progress Bars */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Avg Score</span>
-                      <span className="font-medium text-gray-900">{course.avgScore}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full"
-                        style={{ width: `${course.avgScore}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Completion</span>
-                      <span className="font-medium text-gray-900">{course.completion}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full"
-                        style={{ width: `${course.completion}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metadata */}
-                <div className="text-xs text-gray-500 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Subject: {course.subject}</span>
-                    <span>{course.topics} topics</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Author: {course.author}</span>
-                    <span>Updated {course.updatedAt}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit3 className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button size="sm" className="flex-1">
-                    <ChevronRight className="h-4 w-4 ml-auto" />
-                    Manage
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Create Course Button */}
-      <div className="fixed bottom-8 right-8">
-        <Button size="lg" className="shadow-lg" asChild>
-          <a href="/admin/courses/create">
-            <Plus className="h-5 w-5 mr-2" />
-            Create New Course
-          </a>
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderStudentsTab = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {students.map((student) => (
-              <div key={student.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">{student.name}</h3>
-                    <p className="text-sm text-gray-600">{student.email}</p>
-                    <p className="text-xs text-gray-500">
-                      Enrolled in {student.enrolledCourses.length} courses
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                    <span>{student.totalStudyTime}h study time</span>
-                    <span>{student.averageScore}% avg score</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">View Details</Button>
-                    <Button variant="outline" size="sm">Send Message</Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderVideosTab = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Video Management</CardTitle>
-          <Button>
-            <Plus className="h-4 w-4 mr-1" />
-            Upload Video
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {videos.map((video) => (
-              <div key={video.id} className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0">
-                <div className="w-20 h-14 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <Video className="h-6 w-6 text-gray-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900">{video.title}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
-                      video.status === 'published' ? 'bg-green-100 text-green-800' :
-                      video.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                      video.status === 'ready' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {getVideoStatusIcon(video.status)}
-                      {video.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">Course: {video.course}</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>Duration: {video.duration}</span>
-                    <span>Views: {video.views}</span>
-                    <span>Uploaded: {video.uploadDate}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    <Play className="h-4 w-4 mr-1" />
-                    Preview
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Edit3 className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderContentTab = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Question Bank */}
-        <Card>
-          <CardHeader className="flex items-center justify-between">
-            <CardTitle>Question Bank</CardTitle>
-            <Button>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Question
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{dashboardStats.totalQuestions} Questions</h3>
-              <p className="text-gray-600 mb-4">Across all courses and difficulty levels</p>
-              <Button>Manage Questions</Button>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Content Statistics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Content Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Videos</span>
-                <span className="font-medium text-gray-900">{dashboardStats.totalVideos}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Total Duration</span>
-                <span className="font-medium text-gray-900">24h 15m</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Storage Used</span>
-                <span className="font-medium text-gray-900">45.2 GB</span>
-              </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Enrollment Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <p className="text-muted-foreground">Chart placeholder</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Course Performance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <p className="text-muted-foreground">Chart placeholder</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+          </TabsContent>
 
-  const renderAnalyticsTab = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Analytics Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Analytics coming soon...</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  return (
-    <DashboardLayout>
-      <div className="flex-1">
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-6 py-4">
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-              <p className="text-gray-600">Manage courses, content, and monitor performance</p>
+              <h2 className="text-2xl font-bold">Platform Settings</h2>
+              <Button className="crayon-effect">
+                Save Changes
+              </Button>
             </div>
-          </div>
 
-          {/* Tabs */}
-          <div className="px-6 border-b border-gray-200">
-            <nav className="flex space-x-8">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-black text-black'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <tab.icon className="h-4 w-4" />
-                    {tab.name}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>General Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Email Notifications</p>
+                      <p className="text-sm text-muted-foreground">Send email updates to students</p>
+                    </div>
+                    <Button variant="outline" size="sm">Configure</Button>
                   </div>
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Maintenance Mode</p>
+                      <p className="text-sm text-muted-foreground">Temporarily disable platform</p>
+                    </div>
+                    <Button variant="outline" size="sm">Disable</Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <div className="flex-1 p-6">
-          {activeTab === 'overview' && renderOverviewTab()}
-          {activeTab === 'courses' && renderCoursesTab()}
-          {activeTab === 'students' && renderStudentsTab()}
-          {activeTab === 'videos' && renderVideosTab()}
-          {activeTab === 'content' && renderContentTab()}
-          {activeTab === 'analytics' && renderAnalyticsTab()}
-        </div>
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Security</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Two-Factor Authentication</p>
+                      <p className="text-sm text-muted-foreground">Require 2FA for admin users</p>
+                    </div>
+                    <Button variant="outline" size="sm">Enable</Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Session Timeout</p>
+                      <p className="text-sm text-muted-foreground">Auto-logout after inactivity</p>
+                    </div>
+                    <Button variant="outline" size="sm">30 min</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Floating Action Button for Create Course */}
-      {activeTab === 'courses' && (
-        <div className="fixed bottom-8 right-8">
-          <Button size="lg" className="shadow-lg" asChild>
-            <a href="/admin/courses/create">
-              <Plus className="h-5 w-5 mr-2" />
-              Create Course
-            </a>
-          </Button>
-        </div>
-      )}
-    </DashboardLayout>
+    </AdminLayout>
   );
 };
 

@@ -12,6 +12,7 @@ export default function SignUpPage() {
           <p className="text-gray-600 mt-2">Join GCSEPal and start learning</p>
         </div>
         <SignUp
+          routing="hash"
           appearance={{
             elements: {
               rootBox: "mx-auto",

@@ -3,22 +3,22 @@ const HowItWorks = () => {
     {
       number: "01",
       title: "Select Your Subjects",
-      description: "Choose the GCSE subjects you're studying and let our AI assess your current knowledge level.",
+      description: "Choose your GCSE subjects and let your AI assistant Pal assess your current knowledge level.",
     },
     {
       number: "02",
       title: "Take Quick Assessments",
-      description: "Flash quizzes help identify your strengths and knowledge gaps across all topics.",
+      description: "Smart quizzes identify your strengths and knowledge gaps, creating your personalized learning profile.",
     },
     {
       number: "03",
       title: "Learn Adaptively",
-      description: "Get personalized topic walkthroughs, video explainers, and AI chat support tailored to your needs.",
+      description: "Pal delivers tailored content, video explanations, and 24/7 AI support that matches your learning style.",
     },
     {
       number: "04",
       title: "Track Your Progress",
-      description: "Watch your knowledge graph grow as you master topics and get ready for exam success.",
+      description: "Watch your progress visualization expand in real-time as you master topics and prepare for exam success.",
     },
   ];
 
@@ -26,7 +26,7 @@ const HowItWorks = () => {
     <section className="bg-gray-50 py-24">
       <div className="container">
           <h2 className="mb-16 text-center text-4xl font-bold md:text-5xl">
-            How it works
+            How Your Pal Works
           </h2>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">

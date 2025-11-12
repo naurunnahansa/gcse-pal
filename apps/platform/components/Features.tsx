@@ -4,21 +4,21 @@ const Features = () => {
   const features = [
     {
       icon: Brain,
-      title: "Smart Assessments",
+      title: "Smart Quizzes",
       description:
-        "Flash quizzes, mid exams, and full mock exams that adapt to your knowledge level and identify gaps in real-time.",
+        "Adaptive assessments, practice exams, and real-time feedback that identify your knowledge gaps and accelerate learning.",
     },
     {
       icon: BookOpen,
-      title: "Personalized Learning",
+      title: "Personalized Learning Paths",
       description:
-        "Topic walkthroughs, video explainers, and AI-powered chat support that adapts to your unique learning style.",
+        "Your AI assistant Pal adapts to your learning style with custom content, video explanations, and 24/7 support.",
     },
     {
       icon: Network,
-      title: "Knowledge Graph",
+      title: "Progress Visualization",
       description:
-        "Visual representation of your understanding across all topics, automatically built from your interactions and progress.",
+        "Track your progress in real-time with an interactive knowledge graph that expands as you master new topics and skills.",
     },
   ];
 
@@ -26,7 +26,7 @@ const Features = () => {
     <section className="container py-24 relative">
       <div className="relative z-10">
         <h2 className="mb-16 text-center text-4xl font-bold md:text-5xl">
-          Everything you need to ace your GCSEs
+          Powered by Your AI Assistant Pal
         </h2>
 
         <div className="grid gap-12 md:grid-cols-3">

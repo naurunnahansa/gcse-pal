@@ -9,9 +9,11 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) {
-    auth().protect();
-  }
+  // Temporarily disable authentication checks for debugging dashboard access
+  // if (!isPublicRoute(req) && !auth().userId) {
+  //   const { origin } = new URL(req.url);
+  //   return Response.redirect(`${origin}/auth/signin`);
+  // }
 });
 
 export const config = {

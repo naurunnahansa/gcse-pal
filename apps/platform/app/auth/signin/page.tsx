@@ -12,6 +12,7 @@ export default function SignInPage() {
           <p className="text-gray-600 mt-2">Sign in to your GCSEPal account</p>
         </div>
         <SignIn
+          routing="hash"
           appearance={{
             elements: {
               rootBox: "mx-auto",
