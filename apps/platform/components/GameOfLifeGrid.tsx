@@ -8,8 +8,8 @@ const GameOfLifeGrid = () => {
   const animationFrameRef = useRef<number>();
 
   const cellSize = 8;
-  const liveChars = ['█', '▓', '▒', '░', '■', '●', '◆', '▲'];
-  const deadChar = '·';
+  const liveChars = ['@', '#', '$', '%', '&', '*', '=', '+', '-', '!', '?'];
+  const deadChar = '.';
 
   const initializeGrid = (width: number, height: number) => {
     const cols = Math.floor(width / cellSize);
@@ -87,14 +87,27 @@ const GameOfLifeGrid = () => {
         const y = row * cellSize + cellSize / 2;
 
         if (grid[row][col]) {
-          // Live cell - random character from live chars set
-          const char = liveChars[Math.floor(Math.random() * liveChars.length)];
-          ctx.fillStyle = `rgba(251, 146, 60, ${0.1 + Math.random() * 0.3})`; // Orange with varying opacity
-          ctx.fillText(char, x, y);
+          // Live cell - create denser ASCII patterns
+          const neighbors = countNeighbors(grid, row, col);
+          let pattern = '';
+
+          if (neighbors >= 3) {
+            pattern = liveChars[Math.floor(Math.random() * 3)]; // Use @ # $ for high density
+          } else if (neighbors >= 2) {
+            pattern = liveChars[3 + Math.floor(Math.random() * 3)]; // Use % & * for medium density
+          } else {
+            pattern = liveChars[6 + Math.floor(Math.random() * 4)]; // Use = + - ! ? for low density
+          }
+
+          ctx.fillStyle = `rgba(251, 146, 60, ${0.15 + Math.random() * 0.25})`;
+          ctx.fillText(pattern, x, y);
         } else {
-          // Dead cell
-          ctx.fillStyle = `rgba(156, 163, 175, ${0.05 + Math.random() * 0.1})`; // Gray with low opacity
-          ctx.fillText(deadChar, x, y);
+          // Dead cell - use spaces and dots for emptiness
+          const useDot = Math.random() > 0.7;
+          if (useDot) {
+            ctx.fillStyle = `rgba(156, 163, 175, ${0.08 + Math.random() * 0.12})`;
+            ctx.fillText(deadChar, x, y);
+          }
         }
       }
     }

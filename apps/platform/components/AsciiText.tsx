@@ -12,7 +12,7 @@ interface AsciiTextProps {
 const AsciiText: React.FC<AsciiTextProps> = ({
   text = "GCSE PAL",
   className = "",
-  speed = 0.01,
+  speed = 10,
   characters = "!@#$%^&*()_+-=[]{}|;:,.<>?~`"
 }) => {
   const [displayedText, setDisplayedText] = useState<string[]>([]);
