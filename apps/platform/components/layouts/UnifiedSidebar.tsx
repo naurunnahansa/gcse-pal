@@ -34,6 +34,8 @@ import {
   Play,
   ChevronLeft,
   ChevronRight as ChevronCollapseRight,
+  Calendar,
+  CheckSquare,
 } from 'lucide-react';
 
 interface UnifiedSidebarProps {
@@ -72,9 +74,9 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Learning Tools',
       items: [
-        { name: 'Topic Chat', href: '/learning/chat', icon: Network },
-        { name: 'Study Timer', href: '/tools/timer', icon: Clock },
-        { name: 'Achievements', href: '/achievements', icon: Award },
+        { name: 'Study Calendar', href: '/tools/calendar', icon: Calendar },
+        { name: 'Tasks', href: '/tools/tasks', icon: CheckSquare },
+        { name: 'Notes', href: '/tools/notes', icon: FileText },
       ],
     },
     {
