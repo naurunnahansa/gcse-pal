@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
+import { ensureUserExists } from '@/lib/user-sync';
 
 // GET /api/dashboard/stats - Get user dashboard statistics
 export async function GET(req: NextRequest) {
@@ -12,7 +13,16 @@ export async function GET(req: NextRequest) {
     //     { success: false, error: 'Unauthorized' },
     //     { status: 401 }
     //   );
-    const userId = 'test-user'; // Temporary mock user ID for testing
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Ensure user exists in our database (creates if doesn't exist)
+    const userRecord = await ensureUserExists();
 
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
@@ -20,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User not found' },
+        { success: false, error: 'User not found in database' },
         { status: 404 }
       );
     }

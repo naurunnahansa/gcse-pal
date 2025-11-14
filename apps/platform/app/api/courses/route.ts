@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     //     { success: false, error: 'Unauthorized' },
     //     { status: 401 }
     //   );
-    const userId = 'test-user'; // Temporary mock user ID for testing
+    // Public endpoint - no authentication required for course browsing
 
     // Get query parameters for filtering
     const { searchParams } = new URL(req.url);
