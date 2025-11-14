@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
 import { useCourses } from "@/hooks/useCourses";
+import { toast } from 'sonner';
 import {
   BookOpen,
   Search,
@@ -20,14 +22,17 @@ import {
   Award,
   TrendingUp,
   Loader2,
+  Loader,
 } from "lucide-react";
 
 const BrowseCourses = () => {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [mounted, setMounted] = React.useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
 
   const { courses, loading, error, fetchCourses } = useCourses({
     autoFetch: true, // Enable auto-fetch with initial filters
@@ -85,6 +90,38 @@ const BrowseCourses = () => {
       case 'intermediate': return 'text-yellow-600 bg-yellow-100';
       case 'advanced': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const enrollInCourse = async (courseId: string) => {
+    if (!user) {
+      toast.error('Please sign in to enroll in courses');
+      return;
+    }
+
+    setEnrollingCourseId(courseId);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/enroll`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Successfully enrolled in course!');
+        // Refresh courses to update enrollment status
+        fetchCourses();
+      } else {
+        throw new Error(result.error || 'Failed to enroll');
+      }
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to enroll in course');
+    } finally {
+      setEnrollingCourseId(null);
     }
   };
 
@@ -246,10 +283,27 @@ const BrowseCourses = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Button className="flex-1 bg-black text-white hover:bg-gray-800">
-                        {course.price === 0 ? 'Enroll Free' : `Enroll - £${course.price}`}
+                      <Button
+                        className="flex-1 bg-black text-white hover:bg-gray-800"
+                        onClick={() => enrollInCourse(course.id)}
+                        disabled={enrollingCourseId === course.id}
+                      >
+                        {enrollingCourseId === course.id ? (
+                          <>
+                            <Loader className="h-4 w-4 mr-2 animate-spin" />
+                            Enrolling...
+                          </>
+                        ) : course.price === 0 ? (
+                          'Enroll Free'
+                        ) : (
+                          `Enroll - £${course.price}`
+                        )}
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/learning/${course.id}`)}
+                      >
                         <Play className="h-4 w-4" />
                       </Button>
                     </div>

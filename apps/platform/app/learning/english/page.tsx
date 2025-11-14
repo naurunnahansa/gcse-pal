@@ -12,9 +12,33 @@ const EnglishPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Direct mapping for now - english maps to test-course-2
-    const courseId = 'test-course-2';
-    router.replace(`/learning/${courseId}`);
+    // Find the first english course dynamically
+    const findEnglishCourse = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/courses?subject=english&limit=1');
+        const result = await response.json();
+
+        if (result.success && result.data.length > 0) {
+          const courseId = result.data[0].id;
+          router.replace(`/learning/${courseId}`);
+        } else {
+          setError('No english courses found. Redirecting to course catalog...');
+          setTimeout(() => {
+            router.push('/learning/courses/browse');
+          }, 2000);
+        }
+      } catch (err) {
+        setError('Failed to load english course. Redirecting to course catalog...');
+        setTimeout(() => {
+          router.push('/learning/courses/browse');
+        }, 2000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    findEnglishCourse();
   }, [router]);
 
   if (!isAuthenticated) {

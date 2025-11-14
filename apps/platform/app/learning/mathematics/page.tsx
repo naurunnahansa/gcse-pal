@@ -12,9 +12,33 @@ const MathematicsPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Direct mapping for now - mathematics maps to test-course-1
-    const courseId = 'test-course-1';
-    router.replace(`/learning/${courseId}`);
+    // Find the first mathematics course dynamically
+    const findMathematicsCourse = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/courses?subject=mathematics&limit=1');
+        const result = await response.json();
+
+        if (result.success && result.data.length > 0) {
+          const courseId = result.data[0].id;
+          router.replace(`/learning/${courseId}`);
+        } else {
+          setError('No mathematics courses found. Redirecting to course catalog...');
+          setTimeout(() => {
+            router.push('/learning/courses/browse');
+          }, 2000);
+        }
+      } catch (err) {
+        setError('Failed to load mathematics course. Redirecting to course catalog...');
+        setTimeout(() => {
+          router.push('/learning/courses/browse');
+        }, 2000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    findMathematicsCourse();
   }, [router]);
 
   if (!isAuthenticated) {

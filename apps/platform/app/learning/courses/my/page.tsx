@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +28,7 @@ import {
 
 const MyCourses = () => {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [mounted, setMounted] = React.useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -37,17 +39,9 @@ const MyCourses = () => {
     setMounted(true);
   }, []);
 
-  // Helper function to get subject URL from course subject
-  const getSubjectUrl = (subject: string) => {
-    const subjectMap: Record<string, string> = {
-      'Mathematics': 'mathematics',
-      'English Literature': 'english-literature',
-      'Biology': 'biology',
-      'Chemistry': 'chemistry',
-      'Physics': 'physics',
-      'History': 'history'
-    };
-    return `/learning/${subjectMap[subject] || subject.toLowerCase().replace(/\s+/g, '-')}`;
+  // Helper function to get course URL from course ID
+  const getCourseUrl = (courseId: string) => {
+    return `/learning/${courseId}`;
   };
 
   const statusOptions = ['all', 'pending', 'active', 'completed'];
@@ -349,12 +343,10 @@ const MyCourses = () => {
                       ) : (
                         <Button
                           className="flex-1 bg-black text-white hover:bg-gray-800"
-                          asChild
+                          onClick={() => router.push(getCourseUrl(enrollment.course.id))}
                         >
-                          <a href={getSubjectUrl(enrollment.course.subject)}>
-                            <Play className="h-4 w-4 mr-2" />
-                            {enrollment.status === 'active' ? 'Continue Learning' : 'Start Course'}
-                          </a>
+                          <Play className="h-4 w-4 mr-2" />
+                          {enrollment.status === 'active' ? 'Continue Learning' : 'Start Course'}
                         </Button>
                       )}
                     </div>

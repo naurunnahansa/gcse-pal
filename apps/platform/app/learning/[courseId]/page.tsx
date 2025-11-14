@@ -519,6 +519,17 @@ const CoursePage = () => {
                     {enrolling ? 'Enrolling...' : course.price > 0 ? `Enroll for $${course.price}` : 'Enroll for Free'}
                   </Button>
                 </div>
+              ) : course.chapters.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Content Available Yet</h3>
+                  <p className="text-gray-600 mb-4">This course is currently being developed. Check back soon for chapters and lessons!</p>
+                  <div className="text-sm text-gray-500">
+                    You're enrolled in this course and will be notified when new content is added.
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {course.chapters.map((chapter, chapterIndex) => {
