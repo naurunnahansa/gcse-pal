@@ -105,7 +105,7 @@ const CoursePage = () => {
     if (courseId) {
       fetchCourse();
     }
-  }, [courseId]);
+  }, [courseId, isAuthenticated]);
 
   const fetchCourse = async () => {
     try {
@@ -122,6 +122,8 @@ const CoursePage = () => {
         if (result.data.chapters && result.data.chapters.length > 0) {
           setExpandedChapters(new Set([result.data.chapters[0].id]));
         }
+
+        // Course API provides accurate enrollment status from database
       } else {
         throw new Error(result.error || 'Failed to load course');
       }
@@ -164,7 +166,14 @@ const CoursePage = () => {
         // Refresh course data to show enrollment
         fetchCourse();
       } else {
-        throw new Error(result.error || 'Failed to enroll');
+        // Handle specific error for already enrolled
+        if (result.error && result.error.includes('already enrolled')) {
+          toast.info('You are already enrolled in this course!');
+          // Refresh course data to show enrollment anyway
+          fetchCourse();
+        } else {
+          throw new Error(result.error || 'Failed to enroll');
+        }
       }
     } catch (error) {
       console.error('Error enrolling:', error);
@@ -189,7 +198,7 @@ const CoursePage = () => {
       toast.error('Please enroll in this course first');
       return;
     }
-    router.push(`/learning/lessons/${lessonId}`);
+    router.push(`/learn/lessons/${lessonId}`);
   };
 
   const getDifficultyColor = (difficulty: string) => {

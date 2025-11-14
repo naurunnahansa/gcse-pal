@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: enrollment.id,
+        courseId: enrollment.courseId, // Add courseId field at the top level
         course: {
           id: enrollment.course.id,
           title: enrollment.course.title,

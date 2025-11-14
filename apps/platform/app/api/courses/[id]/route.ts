@@ -64,8 +64,18 @@ export async function GET(
       );
     }
 
-    // For admin/teacher access, return full course data regardless of enrollment
+    // For admin/teacher access, return full course data with enrollment info
     if (user && ['admin', 'teacher'].includes(user.role)) {
+      // Check enrollment even for admins (they might be enrolled as students)
+      let enrollment = await prisma.enrollment.findUnique({
+        where: {
+          userId_courseId: {
+            userId: user.id,
+            courseId: course.id,
+          },
+        },
+      });
+
       const formattedCourse = {
         id: course.id,
         title: course.title,
@@ -92,6 +102,13 @@ export async function GET(
           lessonsCount: chapter.lessons.length,
           totalDuration: chapter.lessons.reduce((sum, lesson) => sum + lesson.duration, 0),
         })),
+        userEnrollment: enrollment ? {
+          id: enrollment.id,
+          enrolledAt: enrollment.enrolledAt,
+          progress: enrollment.progress,
+          status: enrollment.status,
+          completedAt: enrollment.completedAt,
+        } : null,
         createdAt: course.createdAt,
         updatedAt: course.updatedAt,
       };
