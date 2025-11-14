@@ -174,7 +174,7 @@ const BrowseCourses = () => {
                 </div>
               ) : courses.length > 0 ? (
                 courses.map((course) => (
-                <Card key={course.id} className="group cursor-pointer transition-all hover:shadow-lg">
+                  <Card key={course.id} className="group cursor-pointer transition-all hover:shadow-lg">
                   {/* Course Thumbnail */}
                   <div className="aspect-video bg-gray-200 rounded-t-lg flex items-center justify-center">
                     {getCourseTypeIcon(course.subject)}
@@ -255,7 +255,8 @@ const BrowseCourses = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+              ) : null}
             </div>
 
             {/* No Results */}
