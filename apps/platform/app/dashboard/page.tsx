@@ -21,16 +21,7 @@ const Dashboard = () => {
   const { stats, loading, error, refetch } = useDashboard();
   const [mounted, setMounted] = React.useState(false);
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Don't render anything until mounted to prevent hydration mismatch
-  if (!mounted) {
-    return null;
-  }
-
-  // Convert API data to subject progress format
+  // Convert API data to subject progress format - MUST be before any early returns
   const subjects = React.useMemo(() => {
     if (!stats?.subjectDistribution) return [];
 
@@ -52,7 +43,7 @@ const Dashboard = () => {
     });
   }, [stats?.subjectDistribution]);
 
-  // Convert API recent activity to display format
+  // Convert API recent activity to display format - MUST be before any early returns
   const recentActivity = React.useMemo(() => {
     if (!stats?.recentActivity) return [];
 
@@ -64,6 +55,15 @@ const Dashboard = () => {
       time: new Date(activity.startTime).toLocaleString(),
     }));
   }, [stats?.recentActivity]);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   if (!isAuthenticated || !user) {
     return (

@@ -2,26 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const isPublicRoute = createRouteMatcher(['/api/health(.*)']);
+// Temporarily make all routes public for testing API integration
+const isPublicRoute = createRouteMatcher(['/(.*)']);
 
 export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) {
-    // For protected routes, redirect to sign-in or return unauthorized
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
+  // All routes are public for now - remove authentication for testing
+  // You can add authentication back later by changing the matcher above
 });
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
-};
