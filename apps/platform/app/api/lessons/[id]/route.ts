@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 // GET /api/lessons/[id] - Get specific lesson details
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const lessonId = params.id;
+    const { id: lessonId } = await params;
 
     // Get lesson with full details
     const lesson = await prisma.lesson.findUnique({
@@ -166,7 +166,7 @@ export async function GET(
         completedAt: userProgress.completedAt,
         timeSpent: userProgress.timeSpent,
         score: userProgress.score,
-        lastAccessedAt: userProgress.lastAccessedAt,
+        lastAccessedAt: userProgress.lastAccessed,
       } : null,
       navigation: {
         previous: previousLesson,
@@ -194,7 +194,7 @@ export async function GET(
 // POST /api/lessons/[id]/content - Update lesson content (admin/teacher only)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -205,7 +205,7 @@ export async function POST(
       );
     }
 
-    const lessonId = params.id;
+    const { id: lessonId } = await params;
     const body = await req.json();
     const { content, videoUrl, markdownPath, isPublished } = body;
 

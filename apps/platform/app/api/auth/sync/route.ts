@@ -59,7 +59,22 @@ export async function GET(req: NextRequest) {
 
     if (!user) {
       // User not in database yet, create them
-      const syncedUser = await syncUserWithDatabase(clerkUser.userId);
+      await syncUserWithDatabase(clerkUser.userId);
+
+      // Get the user with settings
+      const syncedUser = await prisma.user.findUnique({
+        where: { clerkId: clerkUser.userId },
+        include: {
+          userSettings: true,
+        },
+      });
+
+      if (!syncedUser) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to create user' },
+          { status: 500 }
+        );
+      }
 
       return NextResponse.json({
         success: true,

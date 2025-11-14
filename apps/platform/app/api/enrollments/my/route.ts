@@ -45,13 +45,16 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        progress: {
-          where: {
-            userId: user.id,
-          },
-        },
       },
       orderBy: { enrolledAt: 'desc' },
+    });
+
+    // Get progress for all user enrollments
+    const progress = await prisma.progress.findMany({
+      where: {
+        userId: user.id,
+        courseId: { in: enrollments.map(e => e.courseId) },
+      },
     });
 
     // Calculate progress for each enrollment
@@ -60,8 +63,8 @@ export async function GET(req: NextRequest) {
         (sum, chapter) => sum + chapter.lessons.length,
         0
       );
-      const completedLessons = enrollment.progress.filter(
-        p => p.status === 'completed' && p.lessonId
+      const completedLessons = progress.filter(
+        p => p.courseId === enrollment.courseId && p.status === 'completed' && p.lessonId
       ).length;
       const calculatedProgress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
@@ -92,8 +95,8 @@ export async function GET(req: NextRequest) {
         completedAt: enrollment.completedAt,
         status: enrollment.status,
         progress: Math.round(calculatedProgress),
-        lastAccessed: enrollment.progress.length > 0
-          ? new Date(Math.max(...enrollment.progress.map(p => new Date(p.lastAccessedAt).getTime())))
+        lastAccessed: progress.length > 0
+          ? new Date(Math.max(...progress.filter(p => p.courseId === enrollment.courseId).map(p => new Date(p.lastAccessed).getTime())))
           : enrollment.enrolledAt,
       };
     });

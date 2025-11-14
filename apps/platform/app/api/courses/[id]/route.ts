@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 // GET /api/courses/[id] - Fetch a specific course with full details
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const courseId = params.id;
+    const { id: courseId } = await params;
 
     // Get course with full details
     const course = await prisma.course.findUnique({
@@ -73,7 +73,7 @@ export async function GET(
     }
 
     // Get user progress for this course
-    let progress = [];
+    let progress: any[] = [];
     if (user) {
       progress = await prisma.progress.findMany({
         where: {
@@ -138,7 +138,7 @@ export async function GET(
 // POST /api/courses/[id]/enroll - Enroll user in a course
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -149,7 +149,7 @@ export async function POST(
       );
     }
 
-    const courseId = params.id;
+    const { id: courseId } = await params;
 
     // Check if course exists and is published
     const course = await prisma.course.findUnique({
