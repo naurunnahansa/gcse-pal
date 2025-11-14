@@ -51,6 +51,12 @@ interface CourseData {
   chapters: Chapter[];
 }
 
+interface SelectedPage {
+  type: 'course' | 'chapter' | 'lesson';
+  chapterId?: string;
+  lessonId?: string;
+}
+
 const EditCoursePage = () => {
   const { user, isAuthenticated } = useAuth();
   const params = useParams();
@@ -59,10 +65,13 @@ const EditCoursePage = () => {
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [topicInput, setTopicInput] = useState('');
   const [activeTab, setActiveTab] = useState<'content' | 'settings'>('content');
+  const [selectedPage, setSelectedPage] = useState<SelectedPage>({ type: 'course' });
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
-  const [selectedItem, setSelectedItem] = useState<{ type: 'chapter' | 'lesson'; id: string } | null>(null);
 
   const [courseData, setCourseData] = useState<CourseData>({
     title: '',
@@ -78,9 +87,6 @@ const EditCoursePage = () => {
     status: 'draft',
     chapters: [],
   });
-
-  const [newTopic, setNewTopic] = useState('');
-  const [selectedChapterForLesson, setSelectedChapterForLesson] = useState<string>('');
 
   useEffect(() => {
     setMounted(true);
@@ -103,8 +109,8 @@ const EditCoursePage = () => {
           title: course.title || '',
           description: course.description || '',
           subject: course.subject || '',
-          level: course.level || '',
-          difficulty: course.difficulty || '',
+          level: course.level || 'gcse',
+          difficulty: course.difficulty || 'beginner',
           instructor: course.instructor || '',
           duration: course.duration || 0,
           price: course.price || 0,
@@ -117,7 +123,6 @@ const EditCoursePage = () => {
         // Auto-expand first chapter if exists
         if (course.chapters && course.chapters.length > 0) {
           setExpandedChapters(new Set([course.chapters[0].id]));
-          setSelectedItem({ type: 'lesson', id: course.chapters[0].lessons?.[0]?.id || course.chapters[0].id });
         }
       }
     } catch (error) {
@@ -128,14 +133,13 @@ const EditCoursePage = () => {
     }
   };
 
-  const saveCourse = async (publish = false) => {
-    if (!courseData.title.trim() || !courseData.description.trim() || !courseData.subject.trim() || !courseData.instructor.trim()) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!courseData.title.trim() || !courseData.description.trim()) return;
 
-    setSaving(true);
+    setIsAutoSaving(true);
     try {
+      // Save to server as draft
       const response = await fetch(`/api/courses/${courseId}`, {
         method: 'PUT',
         headers: {
@@ -143,14 +147,62 @@ const EditCoursePage = () => {
         },
         body: JSON.stringify({
           ...courseData,
-          status: publish ? 'published' : 'draft',
+          status: 'draft',
         }),
+      });
+
+      if (response.ok) {
+        setLastSaved(new Date());
+      }
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [courseData, courseId]);
+
+  // Auto-save on changes with debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      autoSave();
+    }, 3000); // 3 seconds debounce
+
+    return () => clearTimeout(timer);
+  }, [courseData, autoSave]);
+
+  const saveCourse = async (status: 'draft' | 'published') => {
+    const errors = validateCourse();
+    if (errors.length > 0) {
+      toast.error('Please fix the following errors:', {
+        description: errors.join(', ')
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const courseToSubmit = {
+        ...courseData,
+        status,
+        duration: calculateTotalDuration(),
+      };
+
+      const response = await fetch(`/api/courses/${courseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(courseToSubmit),
       });
 
       const result = await response.json();
       if (result.success) {
-        toast.success(publish ? 'Course published successfully!' : 'Course saved successfully!');
-        if (publish) {
+        toast.success(`Course ${status === 'published' ? 'published' : 'saved'} successfully!`, {
+          description: `"${courseData.title}" has been updated.`
+        });
+
+        if (status === 'published') {
           router.push('/admin/courses');
         }
       } else {
@@ -158,20 +210,48 @@ const EditCoursePage = () => {
       }
     } catch (error) {
       console.error('Error saving course:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save course');
+      toast.error('Failed to save course', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred'
+      });
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  const toggleChapter = (chapterId: string) => {
-    const newExpanded = new Set(expandedChapters);
-    if (newExpanded.has(chapterId)) {
-      newExpanded.delete(chapterId);
-    } else {
-      newExpanded.add(chapterId);
+  const handleInputChange = (field: keyof CourseData, value: any) => {
+    setCourseData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const addTopic = () => {
+    if (topicInput.trim() && !courseData.topics.includes(topicInput.trim())) {
+      setCourseData(prev => ({
+        ...prev,
+        topics: [...prev.topics, topicInput.trim()]
+      }));
+      setTopicInput('');
     }
-    setExpandedChapters(newExpanded);
+  };
+
+  const removeTopic = (topicToRemove: string) => {
+    setCourseData(prev => ({
+      ...prev,
+      topics: prev.topics.filter(topic => topic !== topicToRemove)
+    }));
+  };
+
+  const toggleChapter = (chapterId: string) => {
+    setExpandedChapters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chapterId)) {
+        newSet.delete(chapterId);
+      } else {
+        newSet.add(chapterId);
+      }
+      return newSet;
+    });
   };
 
   const addChapter = () => {
@@ -234,101 +314,216 @@ const EditCoursePage = () => {
     setSelectedItem({ type: 'lesson', id: newLesson.id });
   };
 
-  const updateLesson = (chapterId: string, lessonId: string, updates: Partial<Lesson>) => {
-    setCourseData(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(chapter =>
-        chapter.id === chapterId
-          ? {
-              ...chapter,
-              lessons: chapter.lessons?.map(lesson =>
-                lesson.id === lessonId ? { ...lesson, ...updates } : lesson
-              )
-            }
-          : chapter
-      )
-    }));
+  const updateLesson = (chapterId: string, lessonId: string, field: keyof Lesson, value: any) => {
+    const chapter = courseData.chapters.find(c => c.id === chapterId);
+    if (!chapter) return;
+
+    const updatedLessons = chapter.lessons.map(lesson =>
+      lesson.id === lessonId ? { ...lesson, [field]: value } : lesson
+    );
+
+    updateChapter(chapterId, 'lessons', updatedLessons);
   };
 
-  const deleteLesson = (chapterId: string, lessonId: string) => {
-    setCourseData(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(chapter =>
-        chapter.id === chapterId
-          ? {
-              ...chapter,
-              lessons: chapter.lessons?.filter(lesson => lesson.id !== lessonId)
-            }
-          : chapter
-      )
-    }));
-    setSelectedItem(null);
+  const removeLesson = (chapterId: string, lessonId: string) => {
+    const chapter = courseData.chapters.find(c => c.id === chapterId);
+    if (!chapter) return;
+
+    const updatedLessons = chapter.lessons.filter(lesson => lesson.id !== lessonId);
+    updateChapter(chapterId, 'lessons', updatedLessons);
   };
 
-  const addTopic = () => {
-    if (newTopic.trim() && !courseData.topics.includes(newTopic.trim())) {
-      setCourseData(prev => ({
-        ...prev,
-        topics: [...prev.topics, newTopic.trim()]
-      }));
-      setNewTopic('');
+  const calculateTotalDuration = () => {
+    return courseData.chapters.reduce((total, chapter) => {
+      const chapterDuration = chapter.lessons.reduce((chapterTotal, lesson) => {
+        return chapterTotal + (lesson.duration || 0);
+      }, 0);
+      return total + Math.max(chapter.duration || 0, chapterDuration);
+    }, 0);
+  };
+
+  const validateCourse = () => {
+    const errors = [];
+
+    if (!courseData.title.trim()) errors.push('Course title is required');
+    if (!courseData.description.trim()) errors.push('Course description is required');
+    if (!courseData.subject) errors.push('Subject is required');
+    if (!courseData.instructor.trim()) errors.push('Instructor name is required');
+    if (courseData.chapters.length === 0) errors.push('At least one chapter is required');
+
+    const chaptersWithLessons = courseData.chapters.filter(chapter => chapter.lessons.length > 0);
+    if (chaptersWithLessons.length === 0) errors.push('At least one chapter must have lessons');
+
+    for (const chapter of courseData.chapters) {
+      if (!chapter.title.trim()) {
+        errors.push(`Chapter ${chapter.order + 1} title is required`);
+      }
+      for (const lesson of chapter.lessons) {
+        if (!lesson.title.trim()) {
+          errors.push(`Lesson in chapter ${chapter.order + 1} title is required`);
+        }
+      }
+    }
+
+    return errors;
+  };
+
+  const selectPage = (page: SelectedPage) => {
+    setSelectedPage(page);
+  };
+
+  const getSelectedContent = () => {
+    if (selectedPage.type === 'course') {
+      return {
+        title: courseData.title,
+        description: courseData.description,
+        content: '',
+        type: 'course'
+      };
+    } else if (selectedPage.type === 'chapter') {
+      const chapter = courseData.chapters.find(c => c.id === selectedPage.chapterId);
+      if (!chapter) return null;
+      return {
+        title: chapter.title,
+        description: chapter.description,
+        content: '',
+        type: 'chapter',
+        chapter
+      };
+    } else if (selectedPage.type === 'lesson') {
+      const chapter = courseData.chapters.find(c => c.id === selectedPage.chapterId);
+      if (!chapter) return null;
+      const lesson = chapter.lessons.find(l => l.id === selectedPage.lessonId);
+      if (!lesson) return null;
+      return {
+        title: lesson.title,
+        description: lesson.description,
+        content: lesson.content || '',
+        videoUrl: lesson.videoUrl,
+        type: 'lesson',
+        chapter,
+        lesson
+      };
+    }
+    return null;
+  };
+
+  const updateSelectedContent = (field: string, value: any) => {
+    if (selectedPage.type === 'course') {
+      handleInputChange(field as keyof CourseData, value);
+    } else if (selectedPage.type === 'chapter') {
+      updateChapter(selectedPage.chapterId!, field as keyof Chapter, value);
+    } else if (selectedPage.type === 'lesson') {
+      updateLesson(selectedPage.chapterId!, selectedPage.lessonId!, field as keyof Lesson, value);
     }
   };
 
-  const removeTopic = (topicToRemove: string) => {
-    setCourseData(prev => ({
-      ...prev,
-      topics: prev.topics.filter(topic => topic !== topicToRemove)
-    }));
+  const downloadCourseJSON = () => {
+    try {
+      const courseExport = {
+        ...courseData,
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+        type: 'course-export'
+      };
+
+      const jsonString = JSON.stringify(courseExport, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${courseData.title || 'course'}-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Course exported successfully', {
+        description: 'The course data has been downloaded as a JSON file.'
+      });
+    } catch (error) {
+      toast.error('Export failed', {
+        description: error instanceof Error ? error.message : 'An error occurred while exporting the course.'
+      });
+    }
   };
 
-  const exportToJson = () => {
-    const dataToExport = {
-      ...courseData,
-      exportedAt: new Date().toISOString(),
-    };
-
-    const dataStr = JSON.stringify(dataToExport, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-
-    const exportFileDefaultName = `${courseData.title.toLowerCase().replace(/\s+/g, '-')}-course.json`;
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-
-    toast.success('Course exported successfully!');
-  };
-
-  const importFromJson = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadCourseJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      toast.error('Invalid file type', {
+        description: 'Please select a JSON file to import.'
+      });
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const importedData = JSON.parse(e.target?.result as string);
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content);
+
+        // Validate the structure
+        if (!importedData.type || importedData.type !== 'course-export') {
+          throw new Error('Invalid course file format');
+        }
+
+        // Basic validation of required fields
+        if (!importedData.title || !importedData.description || !importedData.chapters) {
+          throw new Error('Missing required course data');
+        }
+
+        // Validate chapters and lessons structure
+        if (!Array.isArray(importedData.chapters)) {
+          throw new Error('Invalid chapters data');
+        }
+
+        for (const chapter of importedData.chapters) {
+          if (!chapter.id || !chapter.title) {
+            throw new Error('Invalid chapter data');
+          }
+          if (chapter.lessons && !Array.isArray(chapter.lessons)) {
+            throw new Error('Invalid lessons data');
+          }
+        }
+
+        // Remove export-specific fields
+        const { exportedAt, version, type, ...courseImport } = importedData;
+
+        // Apply the imported data
         setCourseData({
-          title: importedData.title || '',
-          description: importedData.description || '',
-          subject: importedData.subject || '',
-          level: importedData.level || '',
-          difficulty: importedData.difficulty || '',
-          instructor: importedData.instructor || '',
-          duration: importedData.duration || 0,
-          price: importedData.price || 0,
-          topics: importedData.topics || [],
-          thumbnail: importedData.thumbnail || '',
-          status: importedData.status || 'draft',
-          chapters: importedData.chapters || [],
+          title: courseImport.title || '',
+          description: courseImport.description || '',
+          subject: courseImport.subject || '',
+          level: courseImport.level || 'gcse',
+          difficulty: courseImport.difficulty || 'beginner',
+          instructor: courseImport.instructor || '',
+          duration: courseImport.duration || 0,
+          price: courseImport.price || 0,
+          topics: courseImport.topics || [],
+          thumbnail: courseImport.thumbnail || '',
+          status: courseImport.status || 'draft',
+          chapters: courseImport.chapters || []
         });
-        toast.success('Course imported successfully!');
+
+        toast.success('Course imported successfully', {
+          description: `"${importedData.title}" has been loaded. Don't forget to save your changes!`
+        });
+
       } catch (error) {
-        toast.error('Failed to import course. Please check the JSON file format.');
+        toast.error('Import failed', {
+          description: error instanceof Error ? error.message : 'An error occurred while importing the course file.'
+        });
       }
     };
+
     reader.readAsText(file);
+
+    // Reset the file input
+    event.target.value = '';
   };
 
   // Keyboard shortcuts
@@ -352,7 +547,7 @@ const EditCoursePage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [courseData]);
 
-  if (!mounted || !isAuthenticated || !user) {
+  if (!isAuthenticated) {
     return (
       <UnifiedLayout userRole="admin" title="Authentication Required">
         <div className="flex items-center justify-center h-96">
@@ -381,498 +576,428 @@ const EditCoursePage = () => {
     );
   }
 
-  const selectedChapter = courseData.chapters.find(c => c.id === selectedItem?.id && selectedItem.type === 'chapter');
-  const selectedLesson = courseData.chapters
-    .flatMap(c => c.lessons || [])
-    .find(l => l.id === selectedItem?.id && selectedItem.type === 'lesson');
-
   return (
-    <UnifiedLayout userRole="admin" title="Edit Course">
-      <div className="h-screen flex flex-col bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <UnifiedLayout userRole="admin" title={courseData.title || "Edit Course"}>
+      <div className="flex-1 bg-white h-screen flex flex-col">
+        {/* Document-style header with save controls */}
+        <header className="sticky top-0 z-10 bg-white border-b px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.back()}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Edit Course</h1>
-                <p className="text-gray-600">Edit your course content and settings</p>
-              </div>
+              <FileText className="w-5 h-5 text-muted-foreground" />
+              <Input
+                value={courseData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                placeholder="Course Title..."
+                className="text-xl font-semibold border-none shadow-none focus-visible:ring-0 px-0 py-0 w-96"
+              />
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={exportToJson}>
-                <Download className="h-4 w-4 mr-1" />
-                Export JSON
-              </Button>
-              <Button variant="outline" asChild>
-                <label className="cursor-pointer flex items-center">
-                  <Upload className="h-4 w-4 mr-1" />
-                  Import JSON
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={importFromJson}
-                    className="hidden"
-                  />
-                </label>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => saveCourse(false)}
-                disabled={saving}
-              >
-                <Save className="h-4 w-4 mr-1" />
-                {saving ? 'Saving...' : 'Save Draft'}
-              </Button>
-              <Button
-                onClick={() => saveCourse(true)}
-                disabled={saving}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                {saving ? 'Publishing...' : 'Publish Course'}
-              </Button>
-            </div>
-          </div>
-        </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-gray-900">Course Content</h3>
+            <div className="flex items-center gap-3">
+              {lastSaved && (
+                <span className="text-sm text-muted-foreground">
+                  Saved {lastSaved.toLocaleTimeString()}
+                </span>
+              )}
+              {isAutoSaving && (
+                <span className="text-sm text-blue-600">Saving...</span>
+              )}
+
+              <Separator orientation="vertical" className="h-6" />
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={uploadCourseJSON}
+                  className="hidden"
+                  id="import-json"
+                />
                 <Button
-                  size="sm"
-                  onClick={addChapter}
-                  className="flex items-center gap-1"
+                  variant="outline"
+                  onClick={() => document.getElementById('import-json')?.click()}
+                  disabled={isSubmitting}
                 >
-                  <Plus className="h-4 w-4" />
-                  New Chapter
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={downloadCourseJSON}
+                  disabled={isSubmitting}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
                 </Button>
               </div>
 
-              {/* Chapters */}
-              <div className="space-y-2">
-                {courseData.chapters.map((chapter) => (
-                  <div key={chapter.id} className="border border-gray-200 rounded-lg">
-                    <div
-                      className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
-                      onClick={() => toggleChapter(chapter.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <ChevronRight
-                          className={`h-4 w-4 text-gray-500 transition-transform ${
-                            expandedChapters.has(chapter.id) ? 'rotate-90' : ''
-                          }`}
-                        />
-                        <BookOpen className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium text-gray-900">{chapter.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {chapter.lessons?.length || 0} lessons
-                        </Badge>
-                      </div>
-                    </div>
+              <Separator orientation="vertical" className="h-6" />
 
-                    {expandedChapters.has(chapter.id) && (
-                      <div className="border-t border-gray-200">
-                        {chapter.lessons?.map((lesson) => (
-                          <div
-                            key={lesson.id}
-                            className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 border-l-2 ${
-                              selectedItem?.id === lesson.id && selectedItem?.type === 'lesson'
-                                ? 'border-black bg-black/5'
-                                : 'border-transparent'
-                            }`}
-                            onClick={() => setSelectedItem({ type: 'lesson', id: lesson.id })}
-                          >
-                            <Video className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-700">{lesson.title}</span>
-                          </div>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start px-3 py-2 text-gray-500 hover:text-gray-700"
-                          onClick={() => addLesson(chapter.id)}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          New Lesson
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+              <Button
+                variant="outline"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
 
-            {/* Course Actions */}
-            <div className="border-t border-gray-200 p-4">
-              <div className="text-xs text-gray-500 mb-2">
-                Total: {courseData.chapters.reduce((acc, ch) => acc + (ch.lessons?.length || 0), 0)} lessons
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => saveCourse('draft')}
+                disabled={isSubmitting}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Draft
+              </Button>
+
+              <Button
+                onClick={() => saveCourse('published')}
+                disabled={isSubmitting}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Publish
+              </Button>
             </div>
           </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col">
-            {/* Tabs */}
-            <div className="bg-white border-b border-gray-200">
-              <div className="flex">
-                <button
-                  className={`px-6 py-3 font-medium text-sm border-b-2 ${
-                    activeTab === 'content'
-                      ? 'border-black text-black'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                  onClick={() => setActiveTab('content')}
-                >
-                  <Edit3 className="h-4 w-4 inline mr-2" />
-                  Edit Course Content
-                </button>
-                <button
-                  className={`px-6 py-3 font-medium text-sm border-b-2 ${
-                    activeTab === 'settings'
-                      ? 'border-black text-black'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                  onClick={() => setActiveTab('settings')}
-                >
-                  <Settings className="h-4 w-4 inline mr-2" />
-                  Edit Course Settings
-                </button>
-              </div>
-            </div>
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-6 mt-4">
+            <button
+              onClick={() => setActiveTab('content')}
+              className={`px-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'content'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Edit Course Content
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'settings'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Edit Course Settings
+            </button>
+          </div>
+        </header>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto bg-gray-50">
-              {activeTab === 'content' && (
-                <div className="p-6">
-                  {selectedItem ? (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          {selectedItem.type === 'chapter' ? (
-                            <>
-                              <BookOpen className="h-5 w-5" />
-                              Chapter: {selectedChapter?.title}
-                            </>
-                          ) : (
-                            <>
-                              <Video className="h-5 w-5" />
-                              Lesson: {selectedLesson?.title}
-                            </>
-                          )}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {selectedItem.type === 'chapter' && selectedChapter && (
-                          <div className="space-y-4">
-                            <div>
-                              <Label>Chapter Title</Label>
-                              <Input
-                                value={selectedChapter.title}
-                                onChange={(e) => updateChapter(selectedChapter.id, { title: e.target.value })}
-                                placeholder="Enter chapter title"
-                              />
-                            </div>
-                            <div>
-                              <Label>Description</Label>
-                              <Textarea
-                                value={selectedChapter.description}
-                                onChange={(e) => updateChapter(selectedChapter.id, { description: e.target.value })}
-                                placeholder="Enter chapter description"
-                                rows={3}
-                              />
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id={`published-${selectedChapter.id}`}
-                                  checked={selectedChapter.isPublished}
-                                  onChange={(e) => updateChapter(selectedChapter.id, { isPublished: e.target.checked })}
-                                />
-                                <Label htmlFor={`published-${selectedChapter.id}`}>Published</Label>
-                              </div>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => deleteChapter(selectedChapter.id)}
+        {/* Tab Content */}
+        <div className="flex-1 bg-white overflow-hidden">
+          {activeTab === 'content' ? (
+            <div className="flex h-full">
+              {/* Left sidebar with pages */}
+              <aside className="w-80 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+                <div className="p-4">
+                  <div className="mb-4">
+                    <button
+                      onClick={() => selectPage({ type: 'course' })}
+                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-3 transition-colors ${
+                        selectedPage.type === 'course'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <div className="flex-1">
+                        <div className="font-medium">Course Overview</div>
+                        <div className="text-sm opacity-75">Course description and details</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Chapters and Lessons */}
+                  <div className="space-y-1">
+                    {courseData.chapters.map((chapter) => (
+                      <div key={chapter.id} className="mb-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => toggleChapter(chapter.id)}
+                            className="p-1 hover:bg-gray-200 rounded"
+                          >
+                            {expandedChapters.has(chapter.id) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => selectPage({ type: 'chapter', chapterId: chapter.id })}
+                            className={`flex-1 text-left px-2 py-1 rounded-md flex items-center gap-2 transition-colors ${
+                              selectedPage.type === 'chapter' && selectedPage.chapterId === chapter.id
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'hover:bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            <File className="w-4 h-4" />
+                            <span className="text-sm font-medium">{chapter.title || 'Untitled Chapter'}</span>
+                          </button>
+                        </div>
+
+                        {expandedChapters.has(chapter.id) && (
+                          <div className="ml-6 mt-1 space-y-1">
+                            {chapter.lessons.map((lesson) => (
+                              <button
+                                key={lesson.id}
+                                onClick={() => selectPage({ type: 'lesson', chapterId: chapter.id, lessonId: lesson.id })}
+                                className={`w-full text-left px-2 py-1 rounded-md flex items-center gap-2 transition-colors ${
+                                  selectedPage.type === 'lesson' && selectedPage.lessonId === lesson.id
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'hover:bg-gray-100 text-gray-600'
+                                }`}
                               >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete Chapter
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedItem.type === 'lesson' && selectedLesson && (
-                          <div className="space-y-4">
-                            <div>
-                              <Label>Lesson Title</Label>
-                              <Input
-                                value={selectedLesson.title}
-                                onChange={(e) => {
-                                  const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                  if (chapterId) updateLesson(chapterId, selectedLesson.id, { title: e.target.value });
-                                }}
-                                placeholder="Enter lesson title"
-                              />
-                            </div>
-                            <div>
-                              <Label>Description</Label>
-                              <Textarea
-                                value={selectedLesson.description}
-                                onChange={(e) => {
-                                  const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                  if (chapterId) updateLesson(chapterId, selectedLesson.id, { description: e.target.value });
-                                }}
-                                placeholder="Enter lesson description"
-                                rows={3}
-                              />
-                            </div>
-                            <div>
-                              <Label>Content (Markdown)</Label>
-                              <Textarea
-                                value={selectedLesson.content || ''}
-                                onChange={(e) => {
-                                  const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                  if (chapterId) updateLesson(chapterId, selectedLesson.id, { content: e.target.value });
-                                }}
-                                placeholder="Enter lesson content in Markdown format"
-                                rows={8}
-                                className="font-mono text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label>Video URL</Label>
-                              <Input
-                                value={selectedLesson.videoUrl || ''}
-                                onChange={(e) => {
-                                  const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                  if (chapterId) updateLesson(chapterId, selectedLesson.id, { videoUrl: e.target.value });
-                                }}
-                                placeholder="Enter video URL (optional)"
-                              />
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id={`lesson-published-${selectedLesson.id}`}
-                                  checked={selectedLesson.isPublished}
-                                  onChange={(e) => {
-                                    const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                    if (chapterId) updateLesson(chapterId, selectedLesson.id, { isPublished: e.target.checked });
-                                  }}
-                                />
-                                <Label htmlFor={`lesson-published-${selectedLesson.id}`}>Published</Label>
-                              </div>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  const chapterId = courseData.chapters.find(c => c.lessons?.some(l => l.id === selectedLesson.id))?.id;
-                                  if (chapterId) deleteLesson(chapterId, selectedLesson.id);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete Lesson
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card>
-                      <CardContent className="p-12 text-center">
-                        <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select Content to Edit</h3>
-                        <p className="text-gray-600">Choose a chapter or lesson from the sidebar to start editing.</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'settings' && (
-                <div className="p-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Course Settings</CardTitle>
-                      <p>Basic information and metadata about your course</p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <Label>Course Title *</Label>
-                            <Input
-                              value={courseData.title}
-                              onChange={(e) => setCourseData(prev => ({ ...prev, title: e.target.value }))}
-                              placeholder="Enter course title"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label>Instructor Name *</Label>
-                            <Input
-                              value={courseData.instructor}
-                              onChange={(e) => setCourseData(prev => ({ ...prev, instructor: e.target.value }))}
-                              placeholder="Enter instructor name"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Description *</Label>
-                          <Textarea
-                            value={courseData.description}
-                            onChange={(e) => setCourseData(prev => ({ ...prev, description: e.target.value }))}
-                            placeholder="Enter course description"
-                            rows={4}
-                            required
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div>
-                            <Label>Subject *</Label>
-                            <Select value={courseData.subject} onValueChange={(value) => setCourseData(prev => ({ ...prev, subject: value }))}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="mathematics">Mathematics</SelectItem>
-                                <SelectItem value="biology">Biology</SelectItem>
-                                <SelectItem value="chemistry">Chemistry</SelectItem>
-                                <SelectItem value="physics">Physics</SelectItem>
-                                <SelectItem value="english-literature">English Literature</SelectItem>
-                                <SelectItem value="history">History</SelectItem>
-                                <SelectItem value="geography">Geography</SelectItem>
-                                <SelectItem value="computer-science">Computer Science</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Level</Label>
-                            <Select value={courseData.level} onValueChange={(value) => setCourseData(prev => ({ ...prev, level: value }))}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="gcse">GCSE</SelectItem>
-                                <SelectItem value="a-level">A-Level</SelectItem>
-                                <SelectItem value="ks3">KS3</SelectItem>
-                                <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Difficulty</Label>
-                            <Select value={courseData.difficulty} onValueChange={(value) => setCourseData(prev => ({ ...prev, difficulty: value }))}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select difficulty" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="beginner">Beginner</SelectItem>
-                                <SelectItem value="intermediate">Intermediate</SelectItem>
-                                <SelectItem value="advanced">Advanced</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <Label>Duration (minutes)</Label>
-                            <Input
-                              type="number"
-                              value={courseData.duration}
-                              onChange={(e) => setCourseData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <Label>Price ($)</Label>
-                            <Input
-                              type="number"
-                              value={courseData.price}
-                              onChange={(e) => setCourseData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Thumbnail URL</Label>
-                          <Input
-                            value={courseData.thumbnail}
-                            onChange={(e) => setCourseData(prev => ({ ...prev, thumbnail: e.target.value }))}
-                            placeholder="Enter thumbnail URL"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Topics</Label>
-                          <div className="flex gap-2 mb-2">
-                            <Input
-                              value={newTopic}
-                              onChange={(e) => setNewTopic(e.target.value)}
-                              placeholder="Add a topic"
-                              onKeyPress={(e) => e.key === 'Enter' && addTopic()}
-                            />
-                            <Button onClick={addTopic} disabled={!newTopic.trim()}>
-                              Add
+                                <Video className="w-3 h-3" />
+                                <span className="text-sm">{lesson.title || 'Untitled Lesson'}</span>
+                              </button>
+                            ))}
+                            <Button
+                              onClick={() => addLesson(chapter.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-gray-500 hover:text-blue-500 text-xs h-6 px-2"
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              New Lesson
                             </Button>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {courseData.topics.map((topic, index) => (
-                              <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                                {topic}
-                                <button
-                                  onClick={() => removeTopic(topic)}
-                                  className="ml-1 text-gray-500 hover:text-gray-700"
-                                >
-                                  ×
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    <Button
+                      onClick={addChapter}
+                      variant="ghost"
+                      className="w-full justify-start text-gray-500 hover:text-blue-500 text-sm h-8"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Chapter
+                    </Button>
+                  </div>
+                </div>
+              </aside>
+
+              {/* Main content editor */}
+              <main className="flex-1 p-8 overflow-y-auto">
+                <div className="max-w-4xl mx-auto">
+                  {(() => {
+                    const content = getSelectedContent();
+                    if (!content) return <div className="text-center text-gray-500 py-8">Select a page to edit</div>;
+
+                    return (
+                      <div className="space-y-6">
+                        <div>
+                          <Input
+                            value={content.title}
+                            onChange={(e) => updateSelectedContent('title', e.target.value)}
+                            placeholder={content.type === 'course' ? 'Course Title' :
+                                       content.type === 'chapter' ? 'Chapter Title' : 'Lesson Title'}
+                            className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto p-0 mb-4"
+                          />
                         </div>
 
                         <div>
-                          <Label>Status</Label>
-                          <Select value={courseData.status} onValueChange={(value: string) => setCourseData(prev => ({ ...prev, status: value }))}>
+                          <Textarea
+                            value={content.description}
+                            onChange={(e) => updateSelectedContent('description', e.target.value)}
+                            placeholder={content.type === 'course' ? 'Course description...' :
+                                       content.type === 'chapter' ? 'Chapter description...' : 'Lesson description...'}
+                            rows={content.type === 'course' ? 6 : 3}
+                            className="border-none shadow-none focus-visible:ring-0 px-0 resize-none text-lg"
+                          />
+                        </div>
+
+                        {content.type === 'lesson' && (
+                          <div className="space-y-4">
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Video URL</Label>
+                              <Input
+                                value={content.videoUrl || ''}
+                                onChange={(e) => updateSelectedContent('videoUrl', e.target.value)}
+                                placeholder="https://example.com/video.mp4"
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Duration (minutes)</Label>
+                              <Input
+                                type="number"
+                                value={content.lesson?.duration || 0}
+                                onChange={(e) => updateSelectedContent('duration', parseInt(e.target.value) || 0)}
+                                placeholder="0"
+                                min="0"
+                                className="mt-1 w-32"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {content.type === 'lesson' && (
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Lesson Content</Label>
+                            <Textarea
+                              value={content.content}
+                              onChange={(e) => updateSelectedContent('content', e.target.value)}
+                              placeholder="Write your lesson content here..."
+                              rows={12}
+                              className="mt-2 border border-gray-200 rounded-lg p-4"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </main>
+            </div>
+          ) : (
+            /* Settings Tab - same as create course */
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Details</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="instructor">Instructor</Label>
+                        <Input
+                          id="instructor"
+                          value={courseData.instructor}
+                          onChange={(e) => handleInputChange('instructor', e.target.value)}
+                          placeholder="e.g., Dr. Sarah Smith"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Select value={courseData.subject} onValueChange={(value) => handleInputChange('subject', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subject" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mathematics">Mathematics</SelectItem>
+                            <SelectItem value="english">English</SelectItem>
+                            <SelectItem value="science">Science</SelectItem>
+                            <SelectItem value="history">History</SelectItem>
+                            <SelectItem value="geography">Geography</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Level</Label>
+                          <Select value={courseData.level} onValueChange={(value) => handleInputChange('level', value)}>
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder="Level" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="published">Published</SelectItem>
-                              <SelectItem value="archived">Archived</SelectItem>
+                              <SelectItem value="gcse">GCSE</SelectItem>
+                              <SelectItem value="igcse">IGCSE</SelectItem>
+                              <SelectItem value="a_level">A-Level</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Difficulty</Label>
+                          <Select value={courseData.difficulty} onValueChange={(value) => handleInputChange('difficulty', value)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Difficulty" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="beginner">Beginner</SelectItem>
+                              <SelectItem value="intermediate">Intermediate</SelectItem>
+                              <SelectItem value="advanced">Advanced</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="price">Price (£)</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          value={courseData.price}
+                          onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="thumbnail">Thumbnail URL</Label>
+                        <Input
+                          id="thumbnail"
+                          value={courseData.thumbnail || ''}
+                          onChange={(e) => handleInputChange('thumbnail', e.target.value)}
+                          placeholder="https://example.com/thumbnail.jpg"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Topics</h3>
+                    <div className="space-y-2">
+                      <Input
+                        value={topicInput}
+                        onChange={(e) => setTopicInput(e.target.value)}
+                        placeholder="Add topic tag..."
+                        onKeyPress={(e) => e.key === 'Enter' && addTopic()}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        {courseData.topics.map((topic, index) => (
+                          <Badge key={index} variant="secondary" className="cursor-pointer">
+                            {topic}
+                            <button
+                              onClick={() => removeTopic(topic)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              ×
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Stats</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{courseData.chapters.length}</div>
+                        <div className="text-gray-500">Chapters</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">
+                          {courseData.chapters.reduce((total, chapter) => total + chapter.lessons.length, 0)}
+                        </div>
+                        <div className="text-gray-500">Lessons</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">{calculateTotalDuration()}</div>
+                        <div className="text-gray-500">Minutes</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900">£{courseData.price.toFixed(2)}</div>
+                        <div className="text-gray-500">Price</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </UnifiedLayout>

@@ -486,3 +486,120 @@ export async function PUT(
     );
   }
 }
+
+// DELETE /api/courses/[id] - Delete a course
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { id: courseId } = await params;
+
+    // Get user to check role
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Auto-promote any user with 'example.com' in email to admin (temporary)
+    if (user && user.email.includes('example.com') && user.role !== 'admin') {
+      console.log('Auto-promoting user to admin:', user.email);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'admin' }
+      });
+      // Update the user object with new role
+      user.role = 'admin';
+      console.log('User promoted to admin successfully');
+    }
+
+    // Check if user is admin or teacher
+    if (!['admin', 'teacher'].includes(user.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Admin or teacher access required' },
+        { status: 403 }
+      );
+    }
+
+    // Check if course exists
+    const existingCourse = await prisma.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!existingCourse) {
+      return NextResponse.json(
+        { success: false, error: 'Course not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user has permission to delete this course
+    // Admin can delete any course, teacher can only delete their own courses
+    if (user.role !== 'admin' && existingCourse.instructorId !== user.id) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You can only delete your own courses' },
+        { status: 403 }
+      );
+    }
+
+    // Delete the course and all related data in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete progress records first (foreign key constraint)
+      await tx.progress.deleteMany({
+        where: { courseId: courseId },
+      });
+
+      // Delete enrollments
+      await tx.enrollment.deleteMany({
+        where: { courseId: courseId },
+      });
+
+      // Delete lessons (through chapters)
+      const chapters = await tx.chapter.findMany({
+        where: { courseId: courseId },
+        select: { id: true },
+      });
+
+      for (const chapter of chapters) {
+        await tx.lesson.deleteMany({
+          where: { chapterId: chapter.id },
+        });
+      }
+
+      // Delete chapters
+      await tx.chapter.deleteMany({
+        where: { courseId: courseId },
+      });
+
+      // Finally delete the course
+      await tx.course.delete({
+        where: { id: courseId },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Course deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete course error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

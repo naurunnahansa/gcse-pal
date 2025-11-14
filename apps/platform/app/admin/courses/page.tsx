@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
   Plus,
   Edit3,
@@ -57,6 +58,9 @@ const CourseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   React.useEffect(() => {
     setMounted(true);
@@ -96,6 +100,43 @@ const CourseManagement = () => {
       toast.error('Failed to load courses');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
+    setCourseToDelete({ id: courseId, title: courseTitle });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`/api/courses/${courseToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete course');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        toast.success(`Course "${courseToDelete.title}" deleted successfully`);
+        // Refresh the courses list
+        await fetchCourses();
+        setCourseToDelete(null);
+      } else {
+        throw new Error(result.error || 'Failed to delete course');
+      }
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete course');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -402,8 +443,13 @@ const CourseManagement = () => {
                           Edit
                         </a>
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <MoreVertical className="h-4 w-4" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteCourse(course.id, course.title)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -434,6 +480,17 @@ const CourseManagement = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteCourse}
+        title="Delete Course"
+        description="Are you sure you want to delete this course? This action cannot be undone and will permanently remove all associated data."
+        itemName={courseToDelete?.title}
+        isDeleting={isDeleting}
+      />
     </UnifiedLayout>
   );
 };
