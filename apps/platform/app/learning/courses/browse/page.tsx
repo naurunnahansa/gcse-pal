@@ -175,7 +175,7 @@ const BrowseCourses = () => {
               ) : courses.length > 0 ? (
                 courses.map((course) => (
                   <Card key={course.id} className="group cursor-pointer transition-all hover:shadow-lg">
-                  {/* Course Thumbnail */}
+                    {/* Course Thumbnail */}
                   <div className="aspect-video bg-gray-200 rounded-t-lg flex items-center justify-center">
                     {getCourseTypeIcon(course.subject)}
                     <span className="ml-2 text-sm text-gray-600">{course.subject}</span>
