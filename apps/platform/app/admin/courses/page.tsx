@@ -29,6 +29,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { toast } from 'sonner';
 
 interface Course {
   id: string;
@@ -51,86 +52,54 @@ interface Course {
 const CourseManagement = () => {
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = React.useState(false);
+  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
 
   React.useEffect(() => {
     setMounted(true);
+    fetchCourses();
   }, []);
 
-  // Mock course data
-  const courses: Course[] = [
-    {
-      id: '1',
-      title: 'Mathematics Fundamentals',
-      description: 'Complete GCSE Mathematics course covering all essential topics',
-      subject: 'Mathematics',
-      difficulty: 'Intermediate',
-      status: 'published',
-      students: 456,
-      avgScore: 82,
-      completion: 74,
-      topics: 45,
-      videos: 68,
-      questions: 234,
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-20',
-      author: 'Dr. Sarah Johnson',
-    },
-    {
-      id: '2',
-      title: 'Biology: Cell Structure and Function',
-      description: 'Deep dive into cellular biology and processes',
-      subject: 'Biology',
-      difficulty: 'Beginner',
-      status: 'published',
-      students: 389,
-      avgScore: 78,
-      completion: 81,
-      topics: 32,
-      videos: 45,
-      questions: 189,
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-18',
-      author: 'Prof. Michael Chen',
-    },
-    {
-      id: '3',
-      title: 'Advanced Chemistry',
-      description: 'Comprehensive chemistry course with practical applications',
-      subject: 'Chemistry',
-      difficulty: 'Advanced',
-      status: 'draft',
-      students: 0,
-      avgScore: 0,
-      completion: 0,
-      topics: 28,
-      videos: 12,
-      questions: 67,
-      createdAt: '2024-01-22',
-      updatedAt: '2024-01-22',
-      author: 'Dr. Emily Rodriguez',
-    },
-    {
-      id: '4',
-      title: 'English Literature: Shakespeare',
-      description: 'Complete analysis of Shakespeare\'s major works',
-      subject: 'English Literature',
-      difficulty: 'Intermediate',
-      status: 'published',
-      students: 312,
-      avgScore: 71,
-      completion: 62,
-      topics: 38,
-      videos: 52,
-      questions: 156,
-      createdAt: '2024-01-08',
-      updatedAt: '2024-01-19',
-      author: 'Ms. Patricia Williams',
-    },
-  ];
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('/api/courses');
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
 
+      const result = await response.json();
+      if (result.success) {
+        const fetchedCourses = result.data.map((course: any) => ({
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          subject: course.subject,
+          difficulty: course.difficulty.charAt(0).toUpperCase() + course.difficulty.slice(1),
+          status: course.status,
+          students: course.enrollmentCount || 0,
+          avgScore: 0, // We don't have this data yet
+          completion: 0, // We don't have this data yet
+          topics: course.chapters?.length || 0,
+          videos: course.chapters?.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0) || 0,
+          questions: 0, // We don't have this data yet
+          createdAt: new Date(course.createdAt).toLocaleDateString(),
+          updatedAt: new Date(course.updatedAt).toLocaleDateString(),
+          author: course.instructor,
+        }));
+        setCourses(fetchedCourses);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast.error('Failed to load courses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
   const subjects = [
     { id: 'all', name: 'All Subjects' },
     { id: 'mathematics', name: 'Mathematics' },
@@ -187,6 +156,20 @@ const CourseManagement = () => {
   // Don't render anything until mounted
   if (!mounted) {
     return null;
+  }
+
+  // Show loading state while fetching courses
+  if (loading) {
+    return (
+      <UnifiedLayout userRole="admin" title="Loading Courses">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading courses...</p>
+          </div>
+        </div>
+      </UnifiedLayout>
+    );
   }
 
   if (!isAuthenticated || !user) {
@@ -411,9 +394,11 @@ const CourseManagement = () => {
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Edit3 className="h-4 w-4 mr-1" />
-                        Edit
+                      <Button variant="outline" size="sm" className="flex-1" asChild>
+                        <a href={`/admin/courses/${course.id}`}>
+                          <Edit3 className="h-4 w-4 mr-1" />
+                          Edit
+                        </a>
                       </Button>
                       <Button variant="outline" size="sm">
                         <MoreVertical className="h-4 w-4" />
