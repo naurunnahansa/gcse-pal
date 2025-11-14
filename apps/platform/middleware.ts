@@ -9,21 +9,21 @@ const isPublicRoute = createRouteMatcher([
   '/auth/signup(.*)',
   '/api/courses(.*)',  // Public course listing
   '/api/webhooks/clerk(.*)', // Clerk webhooks
+  '/api/trpc(.*)', // tRPC API
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  // Skip middleware for static assets and internal Next.js routes
+  // Skip middleware for static assets and internal Next.js routes only
   if (
     req.nextUrl.pathname.startsWith('/_next/') ||
     req.nextUrl.pathname.startsWith('/favicon.') ||
-    req.nextUrl.pathname.startsWith('/api/') ||
-    req.nextUrl.pathname.includes('.')
+    req.nextUrl.pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/)
   ) {
     return NextResponse.next();
   }
 
+  // Check if route is public first
   if (isPublicRoute(req)) {
-    // Allow public routes
     return NextResponse.next();
   }
 
