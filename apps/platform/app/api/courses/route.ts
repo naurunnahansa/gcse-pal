@@ -129,6 +129,16 @@ export async function POST(req: NextRequest) {
       where: { clerkId: userId },
     });
 
+    // Auto-promote naurunnahansa@gmail.com to admin (temporary)
+    if (user && user.email === 'naurunnahansa@gmail.com' && user.role !== 'admin') {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'admin' }
+      });
+      // Update the user object with new role
+      user.role = 'admin';
+    }
+
     if (!user || !['admin', 'teacher'].includes(user.role)) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin or teacher access required' },
