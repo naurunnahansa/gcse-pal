@@ -390,9 +390,11 @@ const CourseManagement = () => {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
+                      <Button variant="outline" size="sm" className="flex-1" asChild>
+                        <a href={`/learning/courses/${course.id}`}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </a>
                       </Button>
                       <Button variant="outline" size="sm" className="flex-1" asChild>
                         <a href={`/admin/courses/${course.id}`}>
