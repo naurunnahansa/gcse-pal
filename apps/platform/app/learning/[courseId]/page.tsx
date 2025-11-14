@@ -10,6 +10,47 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/components/AuthProvider';
 import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation';
+import { Message, MessageContent } from '@/components/ai-elements/message';
+import {
+  PromptInput,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuTrigger,
+  PromptInputAttachment,
+  PromptInputAttachments,
+  PromptInputBody,
+  PromptInputButton,
+  PromptInputHeader,
+  type PromptInputMessage,
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputTools,
+} from '@/components/ai-elements/prompt-input';
+import { useChat } from '@ai-sdk/react';
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from '@/components/ai-elements/sources';
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@/components/ai-elements/reasoning';
+import { Loader } from '@/components/ai-elements/loader';
+import {
   BookOpen,
   Play,
   Clock,
@@ -24,10 +65,12 @@ import {
   TrendingUp,
   BarChart3,
   PlayCircle,
-  Lock,
   ChevronRight,
   Target,
   Calendar,
+  Brain,
+  MessageCircle,
+  GlobeIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,18 +130,39 @@ interface CourseData {
   updatedAt: string;
 }
 
+const models = [
+  {
+    name: 'GPT 4o',
+    value: 'openai/gpt-4o',
+  },
+  {
+    name: 'Deepseek R1',
+    value: 'deepseek/deepseek-r1',
+  },
+];
+
 const CoursePage = () => {
   const { user, isAuthenticated } = useAuth();
   const params = useParams();
   const router = useRouter();
   const courseId = params?.courseId as string;
 
+  // All hooks must be called at the top, before any conditional logic
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<CourseData | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'progress'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'learn' | 'evaluate' | 'chat' | 'progress'>('overview');
+
+  // Chat state
+  const [chatInput, setChatInput] = useState('');
+  const [chatModel, setChatModel] = useState<string>(models[0].value);
+  const [webSearch, setWebSearch] = useState(false);
+  const { messages, sendMessage, status } = useChat();
+
+  // Additional state for enrollment fallback (moved to top to fix hooks order)
+  const [isEnrolledFromClient, setIsEnrolledFromClient] = useState<boolean | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -106,6 +170,28 @@ const CoursePage = () => {
       fetchCourse();
     }
   }, [courseId, isAuthenticated]);
+
+  // Fallback: Check enrollment from client-side if API says not enrolled (moved to top to fix hooks order)
+  useEffect(() => {
+    if (course && isEnrolledFromClient === null) {
+      const checkEnrollmentFromClient = async () => {
+        try {
+          const response = await fetch('/api/enrollments/my');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data.enrollments) {
+              const found = data.data.enrollments.some((e: any) => e.courseId === course.id);
+              setIsEnrolledFromClient(found);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to check enrollment from client:', error);
+          setIsEnrolledFromClient(false);
+        }
+      };
+      checkEnrollmentFromClient();
+    }
+  }, [course?.id, isEnrolledFromClient]);
 
   const fetchCourse = async () => {
     try {
@@ -229,6 +315,37 @@ const CoursePage = () => {
     return Math.round((completedLessons / totalLessons) * 100);
   };
 
+  // Chat submit handler with course context
+  const handleChatSubmit = (message: PromptInputMessage) => {
+    const hasText = Boolean(message.text);
+    const hasAttachments = Boolean(message.files?.length);
+
+    if (!(hasText || hasAttachments)) {
+      return;
+    }
+
+    // Create context-aware message about the course
+    const courseContext = course ?
+      `You are helping with the course "${course.title}" in ${course.subject}. ${course.description}\n\nTopics covered: ${course.topics.join(', ')}\nDifficulty: ${course.difficulty}\nLevel: ${course.level}`
+      : 'You are helping with a course.';
+
+    const fullMessage = `${courseContext}\n\nUser question: ${message.text || 'Sent with attachments'}`;
+
+    sendMessage(
+      {
+        text: fullMessage,
+        files: message.files
+      },
+      {
+        body: {
+          model: chatModel,
+          webSearch: webSearch,
+        },
+      },
+    );
+    setChatInput('');
+  };
+
   if (!mounted || !isAuthenticated) {
     return (
       <UnifiedLayout userRole="student" title="Authentication Required">
@@ -274,9 +391,13 @@ const CoursePage = () => {
     );
   }
 
-  const isEnrolled = !!course.userEnrollment;
+  // Check enrollment from course data and also from client-side enrollments as fallback
+  const isEnrolledFromAPI = !!course.userEnrollment;
+  const isEnrolled = isEnrolledFromAPI || isEnrolledFromClient === true;
   const overallProgress = getOverallProgress();
 
+  
+  
   return (
     <UnifiedLayout userRole="student" title={course.title}>
       <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -395,28 +516,53 @@ const CoursePage = () => {
             >
               Overview
             </button>
+            {isEnrolled && (
+              <>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'learn'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('learn')}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Learn
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'evaluate'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('evaluate')}
+                >
+                  <Brain className="h-4 w-4" />
+                  Evaluate
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'chat'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('chat')}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Chat
+                </button>
+              </>
+            )}
             <button
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'content'
+                activeTab === 'progress'
                   ? 'border-black text-black'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
-              onClick={() => setActiveTab('content')}
+              onClick={() => setActiveTab('progress')}
             >
-              Course Content
+              Progress
             </button>
-            {isEnrolled && (
-              <button
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'progress'
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveTab('progress')}
-              >
-                Progress
-              </button>
-            )}
           </nav>
         </div>
 
@@ -503,7 +649,7 @@ const CoursePage = () => {
           </div>
         )}
 
-        {activeTab === 'content' && (
+        {activeTab === 'learn' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -517,7 +663,9 @@ const CoursePage = () => {
             <CardContent>
               {!isEnrolled ? (
                 <div className="text-center py-12">
-                  <Lock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="h-8 w-8 text-gray-400" />
+                  </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Enroll to Access Course Content</h3>
                   <p className="text-gray-600 mb-6">Get full access to all lessons, materials, and progress tracking.</p>
                   <Button
@@ -584,7 +732,6 @@ const CoursePage = () => {
                           <div className="border-t border-gray-200 bg-gray-50">
                             {chapter.lessons.map((lesson, lessonIndex) => {
                               const isCompleted = lesson.userProgress?.status === 'completed';
-                              const isLocked = !lesson.isPublished;
 
                               return (
                                 <div
@@ -593,9 +740,7 @@ const CoursePage = () => {
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center">
-                                      {isLocked ? (
-                                        <Lock className="h-4 w-4 text-gray-400" />
-                                      ) : isCompleted ? (
+                                      {isCompleted ? (
                                         <CheckCircle className="h-4 w-4 text-green-500" />
                                       ) : (
                                         <Circle className="h-4 w-4 text-gray-400" />
@@ -617,11 +762,8 @@ const CoursePage = () => {
                                     variant={isCompleted ? "outline" : "default"}
                                     size="sm"
                                     onClick={() => startLesson(lesson.id)}
-                                    disabled={isLocked}
                                   >
-                                    {isLocked ? (
-                                      "Locked"
-                                    ) : isCompleted ? (
+                                    {isCompleted ? (
                                       "Review"
                                     ) : (
                                       <>
@@ -640,6 +782,214 @@ const CoursePage = () => {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'evaluate' && isEnrolled && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Evaluate Your Learning
+              </CardTitle>
+              <p className="text-gray-600">
+                Test your knowledge with quizzes and assessments for {course.title}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Quick Quiz Section */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Assessment</h3>
+                  <p className="text-gray-600 mb-4">Take a quick quiz to test your understanding of the course material</p>
+                  <div className="flex gap-4">
+                    <Button
+                      className="bg-black text-white hover:bg-gray-800"
+                      onClick={() => router.push(`/evals/quiz/${courseId}`)}
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Start Quiz
+                    </Button>
+                    <Button variant="outline">
+                      Practice Questions
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Chapter Assessments */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Chapter Assessments</h3>
+                  <div className="space-y-3">
+                    {course.chapters.map((chapter) => (
+                      <div key={chapter.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-gray-900">{chapter.title}</h4>
+                            <p className="text-sm text-gray-600">
+                              {chapter.lessons.length} lessons • {Math.round(chapter.totalDuration / 60)}h
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/evals/quiz/${courseId}/chapter/${chapter.id}`)}
+                            >
+                              Chapter Quiz
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => router.push(`/evals/assignment/${courseId}/chapter/${chapter.id}`)}
+                            >
+                              Assignment
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Overall Progress Assessment */}
+                <div className="bg-blue-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Course Assessment</h3>
+                  <p className="text-blue-700 mb-4">
+                    Complete the final assessment to earn your certificate
+                  </p>
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => router.push(`/evals/final/${courseId}`)}
+                  >
+                    <Award className="h-4 w-4 mr-2" />
+                    Final Assessment
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === 'chat' && isEnrolled && (
+          <Card className="h-[600px]">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                AI Tutor Chat
+              </CardTitle>
+              <p className="text-gray-600">
+                Get help with {course.title} from your AI tutor
+              </p>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-5rem)] p-0">
+              {/* Full Chat Interface */}
+              <div className="flex flex-col h-full">
+                <Conversation className="h-full">
+                  <ConversationContent>
+                    {messages.map((message) => (
+                      <div key={message.id}>
+                        {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+                          <Sources>
+                            <SourcesTrigger
+                              count={
+                                message.parts.filter(
+                                  (part) => part.type === 'source-url',
+                                ).length
+                              }
+                            />
+                            {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
+                              <SourcesContent key={`${message.id}-${i}`}>
+                                <Source
+                                  key={`${message.id}-${i}`}
+                                  href={part.url}
+                                  title={part.url}
+                                />
+                              </SourcesContent>
+                            ))}
+                          </Sources>
+                        )}
+                        {message.parts.map((part, i) => {
+                          switch (part.type) {
+                            case 'text':
+                              return (
+                                <Message key={`${message.id}-${i}`} from={message.role}>
+                                  <MessageContent>
+                                    {part.text}
+                                  </MessageContent>
+                                </Message>
+                              );
+                            case 'reasoning':
+                              return (
+                                <Reasoning
+                                  key={`${message.id}-${i}`}
+                                  className="w-full"
+                                  isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                                >
+                                  <ReasoningTrigger />
+                                  <ReasoningContent>{part.text}</ReasoningContent>
+                                </Reasoning>
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
+                      </div>
+                    ))}
+                    {status === 'submitted' && <Loader />}
+                  </ConversationContent>
+                  <ConversationScrollButton />
+                </Conversation>
+
+                <PromptInput onSubmit={handleChatSubmit} className="mt-4" globalDrop multiple>
+                  <PromptInputHeader>
+                    <PromptInputAttachments>
+                      {(attachment) => <PromptInputAttachment data={attachment} />}
+                    </PromptInputAttachments>
+                  </PromptInputHeader>
+                  <PromptInputBody>
+                    <PromptInputTextarea
+                      onChange={(e) => setChatInput(e.target.value)}
+                      value={chatInput}
+                      placeholder={`Ask about ${course?.title || 'this course'}...`}
+                    />
+                  </PromptInputBody>
+                  <PromptInputFooter>
+                    <PromptInputTools>
+                      <PromptInputActionMenu>
+                        <PromptInputActionMenuTrigger />
+                        <PromptInputActionMenuContent>
+                          <PromptInputActionAddAttachments />
+                        </PromptInputActionMenuContent>
+                      </PromptInputActionMenu>
+                      <PromptInputButton
+                        variant={webSearch ? 'default' : 'ghost'}
+                        onClick={() => setWebSearch(!webSearch)}
+                      >
+                        <GlobeIcon size={16} />
+                        <span>Search</span>
+                      </PromptInputButton>
+                      <PromptInputSelect
+                        onValueChange={(value) => {
+                          setChatModel(value);
+                        }}
+                        value={chatModel}
+                      >
+                        <PromptInputSelectTrigger>
+                          <PromptInputSelectValue />
+                        </PromptInputSelectTrigger>
+                        <PromptInputSelectContent>
+                          {models.map((model) => (
+                            <PromptInputSelectItem key={model.value} value={model.value}>
+                              {model.name}
+                            </PromptInputSelectItem>
+                          ))}
+                        </PromptInputSelectContent>
+                      </PromptInputSelect>
+                    </PromptInputTools>
+                    <PromptInputSubmit disabled={!chatInput && !status} status={status} />
+                  </PromptInputFooter>
+                </PromptInput>
+              </div>
             </CardContent>
           </Card>
         )}
