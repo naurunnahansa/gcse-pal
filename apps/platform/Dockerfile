@@ -1,5 +1,5 @@
-# Use Node.js 18 as the base image
-FROM node:18-alpine AS base
+# Use Node.js 20 as the base image
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -7,6 +7,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
+COPY apps/platform/package.json apps/platform/pnpm-lock.yaml* ./apps/platform/
 COPY package.json pnpm-lock.yaml* ./
 RUN npm install -g pnpm@8.15.0
 RUN pnpm install --frozen-lockfile
@@ -14,10 +15,21 @@ RUN pnpm install --frozen-lockfile
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+# Install pnpm for builder stage
+RUN npm install -g pnpm@8.15.0
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client
+# Remove Prisma config temporarily
+RUN cd apps/platform && rm -f prisma.config.ts
+
+# Install platform dependencies
+RUN cd apps/platform && pnpm install
+
+# Set environment variables for build
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bWFpbi1iYXNzLTEuY2xlcmsuYWNjb3VudHMuZGV3JA
+
+# Generate Prisma client with correct binary targets
 RUN cd apps/platform && npx prisma generate
 
 # Build the application
@@ -37,9 +49,18 @@ COPY --from=builder /app/apps/platform/public ./public
 COPY --from=builder /app/apps/platform/.next/standalone ./
 COPY --from=builder /app/apps/platform/.next/static ./.next/static
 
+# Copy platform package files
+COPY --from=builder /app/apps/platform/package.json ./package.json
+COPY --from=builder /app/apps/platform/node_modules ./node_modules
+
+# Change to platform directory
+WORKDIR /app/apps/platform
+
 # Copy Prisma files
 COPY --from=builder /app/apps/platform/prisma ./prisma
-COPY --from=builder /app/apps/platform/node_modules/.prisma ./node_modules/.prisma
+
+# Generate Prisma client in production environment
+RUN npx prisma generate
 
 USER nextjs
 

@@ -41,3 +41,29 @@ coverage/
 
 # Misc
 .turbo
+
+# Exclude other apps (we only need platform)
+apps/web/
+apps/docs/
+
+# Exclude deployment configs
+vercel.json
+railway.toml
+nixpacks.toml
+.do/
+
+# Keep pnpm lock for building
+# pnpm-lock.yaml
+
+# Include only what we need
+!apps/platform/
+apps/platform/node_modules/
+apps/platform/.next/
+apps/platform/.env*
+
+# Test files
+apps/platform/**/*.test.*
+apps/platform/**/*.spec.*
+apps/platform/**/test/
+apps/platform/**/tests/
+apps/platform/**/__tests__/
