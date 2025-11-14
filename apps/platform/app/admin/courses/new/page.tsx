@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3 } from 'lucide-react';
+import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import { useAuth } from '@/components/AuthProvider';
@@ -387,6 +387,114 @@ export default function CreateCoursePage() {
     }
   };
 
+  const downloadCourseJSON = () => {
+    try {
+      const courseExport = {
+        ...courseData,
+        exportedAt: new Date().toISOString(),
+        version: '1.0',
+        type: 'course-export'
+      };
+
+      const jsonString = JSON.stringify(courseExport, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${courseData.title || 'course'}-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Course exported successfully', {
+        description: 'The course data has been downloaded as a JSON file.'
+      });
+    } catch (error) {
+      toast.error('Export failed', {
+        description: error instanceof Error ? error.message : 'An error occurred while exporting the course.'
+      });
+    }
+  };
+
+  const uploadCourseJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      toast.error('Invalid file type', {
+        description: 'Please select a JSON file to import.'
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content);
+
+        // Validate the structure
+        if (!importedData.type || importedData.type !== 'course-export') {
+          throw new Error('Invalid course file format');
+        }
+
+        // Basic validation of required fields
+        if (!importedData.title || !importedData.description || !importedData.chapters) {
+          throw new Error('Missing required course data');
+        }
+
+        // Validate chapters and lessons structure
+        if (!Array.isArray(importedData.chapters)) {
+          throw new Error('Invalid chapters data');
+        }
+
+        for (const chapter of importedData.chapters) {
+          if (!chapter.id || !chapter.title) {
+            throw new Error('Invalid chapter data');
+          }
+          if (chapter.lessons && !Array.isArray(chapter.lessons)) {
+            throw new Error('Invalid lessons data');
+          }
+        }
+
+        // Remove export-specific fields
+        const { exportedAt, version, type, ...courseImport } = importedData;
+
+        // Apply the imported data
+        setCourseData({
+          title: courseImport.title || '',
+          description: courseImport.description || '',
+          subject: courseImport.subject || '',
+          level: courseImport.level || 'gcse',
+          difficulty: courseImport.difficulty || 'beginner',
+          instructor: courseImport.instructor || '',
+          duration: courseImport.duration || 0,
+          price: courseImport.price || 0,
+          topics: courseImport.topics || [],
+          thumbnail: courseImport.thumbnail || '',
+          status: courseImport.status || 'draft',
+          chapters: courseImport.chapters || []
+        });
+
+        toast.success('Course imported successfully', {
+          description: `"${importedData.title}" has been loaded. Don't forget to save your changes!`
+        });
+
+      } catch (error) {
+        toast.error('Import failed', {
+          description: error instanceof Error ? error.message : 'An error occurred while importing the course file.'
+        });
+      }
+    };
+
+    reader.readAsText(file);
+
+    // Reset the file input
+    event.target.value = '';
+  };
+
   if (!isAuthenticated) {
     return (
       <UnifiedLayout userRole="admin" title="Authentication Required">
@@ -405,7 +513,7 @@ export default function CreateCoursePage() {
 
   return (
     <UnifiedLayout userRole="admin" title={courseData.title || "New Course"}>
-      <div className="flex-1 bg-white">
+      <div className="flex-1 bg-white h-screen flex flex-col">
         {/* Document-style header with save controls */}
         <header className="sticky top-0 z-10 bg-white border-b px-8 py-4">
           <div className="flex items-center justify-between">
@@ -437,6 +545,35 @@ export default function CreateCoursePage() {
               >
                 Clear Draft
               </Button>
+
+              <Separator orientation="vertical" className="h-6" />
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={uploadCourseJSON}
+                  className="hidden"
+                  id="import-json"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => document.getElementById('import-json')?.click()}
+                  disabled={isSubmitting}
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={downloadCourseJSON}
+                  disabled={isSubmitting}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </div>
 
               <Separator orientation="vertical" className="h-6" />
 
@@ -492,7 +629,7 @@ export default function CreateCoursePage() {
         </header>
 
         {/* Tab Content */}
-        <div className="flex-1 bg-white">
+        <div className="flex-1 bg-white overflow-hidden">
           {activeTab === 'content' ? (
             <div className="flex h-full">
               {/* Left sidebar with pages */}
@@ -661,9 +798,10 @@ export default function CreateCoursePage() {
             </div>
           ) : (
             /* Settings Tab */
-            <div className="max-w-4xl mx-auto p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Details</h3>
                     <div className="space-y-4">
@@ -799,6 +937,97 @@ export default function CreateCoursePage() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Import/Export Info Section */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Import/Export</h3>
+                    <div className="space-y-4">
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <FileJson className="w-4 h-4" />
+                            Export Course
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Download your course as a JSON file for backup or sharing.
+                          </p>
+                          <div className="space-y-2 text-xs text-gray-500">
+                            <p>• Includes all chapters and lessons</p>
+                            <p>• Preserves course structure</p>
+                            <p>• Easy to import back</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Upload className="w-4 h-4" />
+                            Import Course
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-600 mb-3">
+                            Upload a JSON file to restore or duplicate a course.
+                          </p>
+                          <div className="space-y-2 text-xs text-gray-500">
+                            <p>• Only accepts exported JSON files</p>
+                            <p>• Validates data structure</p>
+                            <p>• Replaces current content</p>
+                          </div>
+                          <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-3 h-3 text-amber-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-amber-800">
+                                Import will replace your current course content. Save your work first!
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Quick Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <Button
+                            onClick={downloadCourseJSON}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Current Course
+                          </Button>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".json"
+                              onChange={uploadCourseJSON}
+                              className="hidden"
+                              id="import-json-settings"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start"
+                              onClick={() => document.getElementById('import-json-settings')?.click()}
+                            >
+                              <FileJson className="w-4 h-4 mr-2" />
+                              Import Course File
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+
                 </div>
               </div>
             </div>
