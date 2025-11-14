@@ -1,8 +1,10 @@
 {
   "framework": "nextjs",
+  "rootDirectory": "apps/platform",
   "buildCommand": "cd apps/platform && npm run build",
-  "outputDirectory": "apps/platform/.next",
+  "outputDirectory": ".next",
   "installCommand": "pnpm install",
+  "package.json": "apps/platform/package.json",
   "build": {
     "env": {
       "PRISMA_GENERATE_DATAPROXY": "true"
