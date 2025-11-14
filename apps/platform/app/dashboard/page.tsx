@@ -10,12 +10,15 @@ import {
   Clock,
   TrendingUp,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useDashboard } from "@/hooks/useDashboard";
 import FloatingChat from "@/components/FloatingChat";
 
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
+  const { stats, loading, error, refetch } = useDashboard();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -27,36 +30,40 @@ const Dashboard = () => {
     return null;
   }
 
-  const subjects = [
-    { name: "Mathematics", progress: 68, color: "bg-blue-500" },
-    { name: "English Literature", progress: 45, color: "bg-green-500" },
-    { name: "Biology", progress: 82, color: "bg-purple-500" },
-    { name: "Chemistry", progress: 53, color: "bg-orange-500" },
-  ];
+  // Convert API data to subject progress format
+  const subjects = React.useMemo(() => {
+    if (!stats?.subjectDistribution) return [];
 
-  const recentActivity = [
-    {
-      subject: "Mathematics",
-      topic: "Quadratic Equations",
-      type: "Video Lesson",
+    return Object.entries(stats.subjectDistribution).map(([subject, count]) => {
+      const colors: Record<string, string> = {
+        mathematics: "bg-blue-500",
+        english: "bg-green-500",
+        science: "bg-purple-500",
+        history: "bg-orange-500",
+        geography: "bg-red-500",
+        other: "bg-gray-500",
+      };
+
+      return {
+        name: subject.charAt(0).toUpperCase() + subject.slice(1),
+        progress: Math.min((count / 10) * 100, 100), // Normalize to percentage
+        color: colors[subject.toLowerCase()] || "bg-gray-500",
+      };
+    });
+  }, [stats?.subjectDistribution]);
+
+  // Convert API recent activity to display format
+  const recentActivity = React.useMemo(() => {
+    if (!stats?.recentActivity) return [];
+
+    return stats.recentActivity.slice(0, 3).map(activity => ({
+      subject: activity.course.subject.charAt(0).toUpperCase() + activity.course.subject.slice(1),
+      topic: activity.lesson?.title || activity.course.title,
+      type: activity.type === 'lesson' ? 'Video Lesson' : 'Course',
       score: null,
-      time: "2 hours ago",
-    },
-    {
-      subject: "Biology",
-      topic: "Cell Structure",
-      type: "Reading Material",
-      score: null,
-      time: "5 hours ago",
-    },
-    {
-      subject: "English Literature",
-      topic: "Macbeth Analysis",
-      type: "Study Notes",
-      score: null,
-      time: "Yesterday",
-    },
-  ];
+      time: new Date(activity.startTime).toLocaleString(),
+    }));
+  }, [stats?.recentActivity]);
 
   if (!isAuthenticated || !user) {
     return (
@@ -96,27 +103,40 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-4">
-              {subjects.map((subject) => (
-                <Card key={subject.name} className="border-border p-6">
-                  <CardContent className="p-0">
-                    <div className="mb-4 flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">{subject.name}</h3>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {subject.progress}%
-                      </span>
-                    </div>
-                    <Progress value={subject.progress} className="h-2" />
-                    <div className="mt-4 flex gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={`/learning/${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                          <BookOpen className="mr-2 h-4 w-4" />
-                          Continue Learning
-                        </a>
-                      </Button>
-                    </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : subjects.length > 0 ? (
+                subjects.map((subject) => (
+                  <Card key={subject.name} className="border-border p-6">
+                    <CardContent className="p-0">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">{subject.name}</h3>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {subject.progress}%
+                        </span>
+                      </div>
+                      <Progress value={subject.progress} className="h-2" />
+                      <div className="mt-4 flex gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={`/learning/${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                            <BookOpen className="mr-2 h-4 w-4" />
+                            Continue Learning
+                          </a>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="border-border p-6">
+                  <CardContent className="p-0 text-center py-8">
+                    <p className="text-muted-foreground">No subject data available yet.</p>
+                    <p className="text-sm text-muted-foreground">Start learning to see your progress!</p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
           </div>
 
@@ -126,26 +146,56 @@ const Dashboard = () => {
             <Card className="border-border p-6">
               <CardContent className="p-0">
                 <h3 className="mb-4 text-lg font-semibold">This Week</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                      <Clock className="h-5 w-5" />
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-red-500">Failed to load stats</p>
+                    <Button size="sm" variant="outline" onClick={refetch} className="mt-2">
+                      Retry
+                    </Button>
+                  </div>
+                ) : stats ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {Math.round((stats.progress.weeklyGoal?.current || 0) / 60 * 10) / 10}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Hours studied</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">12.5</p>
-                      <p className="text-sm text-muted-foreground">Hours studied</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                        <TrendingUp className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">
+                          {Math.round(stats.progress.averageQuizScore)}%
+                        </p>
+                        <p className="text-sm text-muted-foreground">Avg. quiz score</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stats.progress.currentStreak}</p>
+                        <p className="text-sm text-muted-foreground">Day streak</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                      <TrendingUp className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">+15%</p>
-                      <p className="text-sm text-muted-foreground">Avg. score increase</p>
-                    </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">No data available</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -153,29 +203,40 @@ const Dashboard = () => {
             <Card className="border-border p-6">
               <CardContent className="p-0">
                 <h3 className="mb-4 text-lg font-semibold">Recent Activity</h3>
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="border-b border-border pb-4 last:border-0 last:pb-0"
-                    >
-                      <div className="mb-1 flex items-center justify-between">
-                        <p className="text-sm font-medium">{activity.subject}</p>
-                        {activity.score && (
-                          <span className="text-sm font-semibold">
-                            {activity.score}%
-                          </span>
-                        )}
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity, index) => (
+                      <div
+                        key={index}
+                        className="border-b border-border pb-4 last:border-0 last:pb-0"
+                      >
+                        <div className="mb-1 flex items-center justify-between">
+                          <p className="text-sm font-medium">{activity.subject}</p>
+                          {activity.score && (
+                            <span className="text-sm font-semibold">
+                              {activity.score}%
+                            </span>
+                          )}
+                        </div>
+                        <p className="mb-1 text-sm text-muted-foreground">
+                          {activity.topic}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {activity.type} • {activity.time}
+                        </p>
                       </div>
-                      <p className="mb-1 text-sm text-muted-foreground">
-                        {activity.topic}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {activity.type} • {activity.time}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">No recent activity</p>
+                    <p className="text-xs text-muted-foreground">Start learning to see your activity here!</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
