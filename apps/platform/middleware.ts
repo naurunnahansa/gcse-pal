@@ -12,6 +12,16 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware((auth, req) => {
+  // Skip middleware for static assets and internal Next.js routes
+  if (
+    req.nextUrl.pathname.startsWith('/_next/') ||
+    req.nextUrl.pathname.startsWith('/favicon.') ||
+    req.nextUrl.pathname.startsWith('/api/') ||
+    req.nextUrl.pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
   if (isPublicRoute(req)) {
     // Allow public routes
     return NextResponse.next();
