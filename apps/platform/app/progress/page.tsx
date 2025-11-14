@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
+import { useProgress } from "@/hooks/useProgress";
 import {
   TrendingUp,
   Clock,
@@ -27,149 +28,33 @@ import {
 const Progress = () => {
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = React.useState(false);
+  const { data: progressData, loading, error, refresh } = useProgress();
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Mock data for progress tracking
-  const overallStats = {
-    totalStudyTime: 48, // hours
-    weeklyGoal: 10, // hours
-    weeklyProgress: 7.5, // hours
-    totalQuestions: 245,
-    accuracyRate: 78,
-    streak: 5, // days
-    subjectsStudied: 4,
+  // Icon mapping function
+  const getIcon = (iconName: string) => {
+    const icons: Record<string, any> = {
+      BarChart3,
+      BookOpen,
+      Brain,
+      Clock,
+      Zap,
+      CheckCircle,
+      Target,
+      Activity,
+      Calendar,
+      Trophy,
+      Star,
+      Award,
+      TrendingUp,
+      PieChart,
+      Users,
+    };
+    return icons[iconName] || BookOpen;
   };
-
-  const subjectProgress = [
-    {
-      id: 'mathematics',
-      name: 'Mathematics',
-      progress: 68,
-      totalTopics: 45,
-      completedTopics: 31,
-      studyTime: 12, // hours
-      questionsAnswered: 89,
-      accuracy: 85,
-      color: 'bg-blue-500',
-      icon: BarChart3,
-    },
-    {
-      id: 'english-literature',
-      name: 'English Literature',
-      progress: 45,
-      totalTopics: 38,
-      completedTopics: 17,
-      studyTime: 8, // hours
-      questionsAnswered: 56,
-      accuracy: 72,
-      color: 'bg-green-500',
-      icon: BookOpen,
-    },
-    {
-      id: 'biology',
-      name: 'Biology',
-      progress: 82,
-      totalTopics: 32,
-      completedTopics: 26,
-      studyTime: 18, // hours
-      questionsAnswered: 76,
-      accuracy: 91,
-      color: 'bg-purple-500',
-      icon: Brain,
-    },
-    {
-      id: 'chemistry',
-      name: 'Chemistry',
-      progress: 53,
-      totalTopics: 29,
-      completedTopics: 15,
-      studyTime: 10, // hours
-      questionsAnswered: 24,
-      accuracy: 65,
-      color: 'bg-orange-500',
-      icon: Zap,
-    },
-  ];
-
-  const weeklyActivity = [
-    { day: 'Mon', hours: 1.5, topics: 3, questions: 15 },
-    { day: 'Tue', hours: 2.0, topics: 2, questions: 20 },
-    { day: 'Wed', hours: 1.0, topics: 4, questions: 12 },
-    { day: 'Thu', hours: 1.5, topics: 2, questions: 18 },
-    { day: 'Fri', hours: 0.5, topics: 1, questions: 8 },
-    { day: 'Sat', hours: 0.0, topics: 0, questions: 0 },
-    { day: 'Sun', hours: 1.0, topics: 3, questions: 16 },
-  ];
-
-  const achievements = [
-    {
-      id: 'first-quiz',
-      title: 'Quiz Beginner',
-      description: 'Complete your first flash quiz',
-      icon: Brain,
-      earned: true,
-      earnedDate: '2024-01-15',
-    },
-    {
-      id: 'week-streak',
-      title: 'Week Warrior',
-      description: 'Study for 7 days in a row',
-      icon: Calendar,
-      earned: true,
-      earnedDate: '2024-01-20',
-    },
-    {
-      id: 'subject-master',
-      title: 'Subject Master',
-      description: 'Complete 100% of any subject',
-      icon: Trophy,
-      earned: false,
-      progress: 82,
-    },
-    {
-      id: 'quiz-champion',
-      title: 'Quiz Champion',
-      description: 'Score 90% or higher on 5 quizzes',
-      icon: Star,
-      earned: false,
-      progress: 3,
-      total: 5,
-    },
-  ];
-
-  const recentMilestones = [
-    {
-      type: 'topic-completed',
-      title: 'Completed Cell Biology',
-      subject: 'Biology',
-      date: '2 hours ago',
-      icon: CheckCircle,
-    },
-    {
-      type: 'quiz-score',
-      title: 'Scored 91% on Algebra Quiz',
-      subject: 'Mathematics',
-      date: '5 hours ago',
-      icon: Target,
-    },
-    {
-      type: 'streak',
-      title: '5 day study streak!',
-      subject: 'All Subjects',
-      date: 'Yesterday',
-      icon: Activity,
-    },
-    {
-      type: 'time-goal',
-      title: 'Weekly study goal achieved',
-      subject: 'All Subjects',
-      date: '2 days ago',
-      icon: Clock,
-    },
-  ];
 
   // Don't render anything until mounted
   if (!mounted) {
@@ -189,6 +74,51 @@ const Progress = () => {
       </div>
     );
   }
+
+  if (loading) {
+    return (
+      <UnifiedLayout userRole="student">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading your progress data...</p>
+          </div>
+        </div>
+      </UnifiedLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <UnifiedLayout userRole="student">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Error Loading Progress</h1>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={refresh}>Try Again</Button>
+          </div>
+        </div>
+      </UnifiedLayout>
+    );
+  }
+
+  if (!progressData) {
+    return (
+      <UnifiedLayout userRole="student">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">No Progress Data</h1>
+            <p className="text-gray-600 mb-4">Start learning to see your progress here.</p>
+            <Button asChild>
+              <a href="/learning">Start Learning</a>
+            </Button>
+          </div>
+        </div>
+      </UnifiedLayout>
+    );
+  }
+
+  const { overallStats, subjectProgress, weeklyActivity, achievements, recentMilestones } = progressData;
 
   return (
     <UnifiedLayout userRole="student">
@@ -287,7 +217,7 @@ const Progress = () => {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${subject.color}`}>
-                              <subject.icon className="h-4 w-4 text-white" />
+                              {React.createElement(getIcon(subject.icon), { className: "h-4 w-4 text-white" })}
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-900">{subject.name}</h3>
@@ -389,7 +319,7 @@ const Progress = () => {
                         <div className={`p-2 rounded-lg ${
                           achievement.earned ? 'bg-green-500' : 'bg-gray-300'
                         }`}>
-                          <achievement.icon className="h-4 w-4 text-white" />
+                          <Brain className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1">
                           <h4 className={`font-medium text-sm ${
@@ -434,7 +364,7 @@ const Progress = () => {
                     {recentMilestones.map((milestone, index) => (
                       <div key={index} className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
-                          <milestone.icon className="h-4 w-4 text-blue-600" />
+                          {React.createElement(getIcon(milestone.icon), { className: "h-4 w-4 text-blue-600" })}
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{milestone.title}</p>
