@@ -124,15 +124,29 @@ const CourseViewPage = () => {
   };
 
   const enrollInCourse = async () => {
-    if (!course || !user) return;
+    if (!course || !user) {
+      console.error('Cannot enroll: course or user missing', { course: !!course, user: !!user });
+      toast.error('Please sign in to enroll in courses');
+      return;
+    }
 
     setEnrolling(true);
     try {
+      console.log('Attempting to enroll in course:', courseId);
+      console.log('User authenticated:', !!user);
+
       const response = await fetch(`/api/courses/${courseId}/enroll`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
+      console.log('Enrollment response status:', response.status);
+
       const result = await response.json();
+      console.log('Enrollment response:', result);
+
       if (result.success) {
         toast.success('Successfully enrolled in course!');
         // Refresh course data to show enrollment
