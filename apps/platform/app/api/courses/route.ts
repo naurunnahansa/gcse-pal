@@ -148,38 +148,122 @@ export async function POST(req: NextRequest) {
       difficulty,
       topics,
       price,
+      status,
+      chapters,
     } = body;
 
     if (!title || !description || !subject || !instructor) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Missing required fields: title, description, subject, instructor' },
         { status: 400 }
       );
     }
 
-    const course = await prisma.course.create({
-      data: {
-        title,
-        description,
-        subject,
-        level: level || 'gcse',
-        thumbnail,
-        instructor,
-        instructorId: user.id,
-        duration: duration || 0,
-        difficulty: difficulty || 'beginner',
-        topics: topics || [],
-        price: price || 0,
-        status: 'draft', // Start as draft, need to publish manually
-      },
+    // Create course with chapters and lessons in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the course
+      const course = await tx.course.create({
+        data: {
+          title,
+          description,
+          subject,
+          level: level || 'gcse',
+          thumbnail,
+          instructor,
+          instructorId: user.id,
+          duration: duration || 0,
+          difficulty: difficulty || 'beginner',
+          topics: topics || [],
+          price: price || 0,
+          status: status || 'draft',
+        },
+      });
+
+      // If chapters are provided, create them with lessons
+      if (chapters && Array.isArray(chapters) && chapters.length > 0) {
+        for (const [index, chapterData] of chapters.entries()) {
+          if (!chapterData.title || !chapterData.title.trim()) {
+            throw new Error(`Chapter ${index + 1} title is required`);
+          }
+
+          const chapter = await tx.chapter.create({
+            data: {
+              courseId: course.id,
+              title: chapterData.title,
+              description: chapterData.description || '',
+              order: index,
+              duration: chapterData.duration || 0,
+              isPublished: chapterData.isPublished || false,
+            },
+          });
+
+          // Create lessons for this chapter if provided
+          if (chapterData.lessons && Array.isArray(chapterData.lessons) && chapterData.lessons.length > 0) {
+            for (const [lessonIndex, lessonData] of chapterData.lessons.entries()) {
+              if (!lessonData.title || !lessonData.title.trim()) {
+                throw new Error(`Lesson ${lessonIndex + 1} in chapter ${chapterData.title} title is required`);
+              }
+
+              await tx.lesson.create({
+                data: {
+                  chapterId: chapter.id,
+                  title: lessonData.title,
+                  description: lessonData.description || '',
+                  content: lessonData.content,
+                  videoUrl: lessonData.videoUrl,
+                  videoDuration: lessonData.videoDuration,
+                  markdownPath: lessonData.markdownPath,
+                  hasVideo: !!lessonData.videoUrl,
+                  hasMarkdown: !!lessonData.markdownPath || !!lessonData.content,
+                  order: lessonIndex,
+                  duration: lessonData.duration || 0,
+                  isPublished: lessonData.isPublished || false,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Fetch the complete course with all relations
+      const completeCourse = await tx.course.findUnique({
+        where: { id: course.id },
+        include: {
+          chapters: {
+            orderBy: { order: 'asc' },
+            include: {
+              lessons: {
+                orderBy: { order: 'asc' },
+              },
+            },
+          },
+          _count: {
+            select: {
+              enrollments: true,
+              chapters: true,
+            },
+          },
+        },
+      });
+
+      return completeCourse;
     });
 
     return NextResponse.json({
       success: true,
-      data: course,
+      data: result,
     });
   } catch (error) {
     console.error('Create course error:', error);
+
+    // Handle validation errors specifically
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

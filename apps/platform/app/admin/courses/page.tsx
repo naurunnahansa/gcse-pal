@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import {
   Plus,
   Edit3,
@@ -190,23 +191,25 @@ const CourseManagement = () => {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-          <p className="text-muted-foreground mb-4">Please sign in to access admin features.</p>
-          <Button asChild>
-            <a href="/auth/signin">Sign In</a>
-          </Button>
+      <UnifiedLayout userRole="admin" title="Authentication Required">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
+            <p className="text-muted-foreground mb-4">Please sign in to access admin features.</p>
+            <Button asChild>
+              <a href="/auth/signin">Sign In</a>
+            </Button>
+          </div>
         </div>
-      </div>
+      </UnifiedLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
+    <UnifiedLayout userRole="admin" title="Course Management">
+      <div className="flex-1 bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
@@ -218,7 +221,7 @@ const CourseManagement = () => {
                 Settings
               </Button>
               <Button asChild>
-                <a href="/admin/courses/create">
+                <a href="/admin/courses/new">
                   <Plus className="h-4 w-4 mr-1" />
                   Create Course
                 </a>
@@ -226,225 +229,225 @@ const CourseManagement = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="p-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Courses</p>
-                  <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
-                </div>
-                <BookOpen className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Published</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {courses.filter(c => c.status === 'published').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {courses.reduce((sum, course) => sum + course.students, 0).toLocaleString()}
-                  </p>
-                </div>
-                <Users className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Avg Completion</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {Math.round(courses.reduce((sum, course) => sum + course.completion, 0) / courses.length)}%
-                  </p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search courses..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <select
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                >
-                  {subjects.map(subject => (
-                    <option key={subject.id} value={subject.id}>{subject.name}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                >
-                  {statuses.map(status => (
-                    <option key={status.id} value={status.id}>{status.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Courses Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(course.difficulty)}`}>
-                        {course.difficulty}
-                      </span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${getStatusColor(course.status)}`}>
-                        {getStatusIcon(course.status)}
-                        {course.status}
-                      </span>
-                    </div>
-                    <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                    <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                  </div>
-                  <div className="relative">
-                    <Button variant="ghost" size="sm">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Course Stats */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{course.students} students</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{course.avgScore}% avg score</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Video className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{course.videos} videos</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{course.questions} questions</span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
+        <div className="p-6">
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Completion Rate</span>
-                      <span className="font-medium text-gray-900">{course.completion}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full"
-                        style={{ width: `${course.completion}%` }}
-                      />
-                    </div>
+                    <p className="text-sm text-gray-600">Total Courses</p>
+                    <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
                   </div>
-
-                  {/* Metadata */}
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Subject: {course.subject}</span>
-                      <span>{course.topics} topics</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Author: {course.author}</span>
-                      <span>Updated {course.updatedAt}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Edit3 className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <BookOpen className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        {/* Empty State */}
-        {filteredCourses.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || selectedSubject !== 'all' || selectedStatus !== 'all'
-                  ? 'Try adjusting your filters or search terms'
-                  : 'Get started by creating your first course'}
-              </p>
-              <Button asChild>
-                <a href="/admin/courses/create">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Create Course
-                </a>
-              </Button>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Published</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {courses.filter(c => c.status === 'published').length}
+                    </p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Students</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {courses.reduce((sum, course) => sum + course.students, 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Avg Completion</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {Math.round(courses.reduce((sum, course) => sum + course.completion, 0) / courses.length)}%
+                    </p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search courses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <select
+                    value={selectedSubject}
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>{subject.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {statuses.map(status => (
+                      <option key={status.id} value={status.id}>{status.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        )}
+
+          {/* Courses Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCourses.map((course) => (
+              <Card key={course.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(course.difficulty)}`}>
+                          {course.difficulty}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${getStatusColor(course.status)}`}>
+                          {getStatusIcon(course.status)}
+                          {course.status}
+                        </span>
+                      </div>
+                      <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                      <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
+                    </div>
+                    <div className="relative">
+                      <Button variant="ghost" size="sm">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Course Stats */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">{course.students} students</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">{course.avgScore}% avg score</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Video className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">{course.videos} videos</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">{course.questions} questions</span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">Completion Rate</span>
+                        <span className="font-medium text-gray-900">{course.completion}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: `${course.completion}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div className="flex justify-between">
+                        <span>Subject: {course.subject}</span>
+                        <span>{course.topics} topics</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Author: {course.author}</span>
+                        <span>Updated {course.updatedAt}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {filteredCourses.length === 0 && (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || selectedSubject !== 'all' || selectedStatus !== 'all'
+                    ? 'Try adjusting your filters or search terms'
+                    : 'Get started by creating your first course'}
+                </p>
+                <Button asChild>
+                  <a href="/admin/courses/new">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create Course
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </div>
+    </UnifiedLayout>
   );
 };
 

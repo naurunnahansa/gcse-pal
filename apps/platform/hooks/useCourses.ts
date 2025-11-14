@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CoursesAPI, Course, CourseFilter, CourseResponse } from '@/lib/api/courses';
 
 interface UseCoursesOptions {
@@ -23,7 +23,7 @@ export const useCourses = (options: UseCoursesOptions = {}) => {
     hasPrev: false,
   });
 
-  const fetchCourses = async (filters: CourseFilter = {}) => {
+  const fetchCourses = useCallback(async (filters: CourseFilter = {}) => {
     try {
       setLoading(true);
       setError(null);
@@ -36,7 +36,7 @@ export const useCourses = (options: UseCoursesOptions = {}) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadMore = () => {
     if (pagination.hasNext) {

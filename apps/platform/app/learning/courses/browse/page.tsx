@@ -30,7 +30,7 @@ const BrowseCourses = () => {
   const [selectedLevel, setSelectedLevel] = useState('all');
 
   const { courses, loading, error, fetchCourses } = useCourses({
-    autoFetch: true,
+    autoFetch: true, // Enable auto-fetch with initial filters
   });
 
   React.useEffect(() => {
@@ -45,7 +45,7 @@ const BrowseCourses = () => {
       level: selectedLevel !== 'all' ? selectedLevel.toLowerCase() : undefined,
     };
     fetchCourses(filters);
-  }, [searchTerm, selectedSubject, selectedLevel, fetchCourses]);
+  }, [searchTerm, selectedSubject, selectedLevel]);
 
   const subjects = ['all', 'mathematics', 'english', 'science', 'history', 'geography', 'other'];
   const levels = ['all', 'gcse', 'igcse', 'a_level'];
