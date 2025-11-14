@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import { useAuth } from "@/components/AuthProvider";
+import { useCourses } from "@/hooks/useCourses";
 import {
   BookOpen,
   Search,
@@ -18,6 +19,7 @@ import {
   Video,
   Award,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 
 const BrowseCourses = () => {
@@ -27,131 +29,26 @@ const BrowseCourses = () => {
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedLevel, setSelectedLevel] = useState('all');
 
+  const { courses, loading, error, fetchCourses } = useCourses({
+    autoFetch: true,
+  });
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Sample course data
-  const allCourses = [
-    {
-      id: 1,
-      title: "GCSE Mathematics Complete Course",
-      subject: "Mathematics",
-      level: "GCSE",
-      description: "Master all topics required for GCSE Mathematics including algebra, geometry, statistics, and more.",
-      duration: "120 hours",
-      enrolled: 1234,
-      rating: 4.8,
-      lessons: 145,
-      type: "comprehensive",
-      difficulty: "intermediate",
-      thumbnail: "/api/placeholder/300/200",
-      price: 49.99,
-      instructor: "Dr. Sarah Johnson",
-      topics: ["Algebra", "Geometry", "Statistics", "Probability", "Number Theory"]
-    },
-    {
-      id: 2,
-      title: "English Literature: Shakespeare & Poetry",
-      subject: "English Literature",
-      level: "GCSE",
-      description: "Explore Shakespeare's major works and develop skills in poetry analysis and essay writing.",
-      duration: "80 hours",
-      enrolled: 892,
-      rating: 4.9,
-      lessons: 98,
-      type: "literature",
-      difficulty: "intermediate",
-      thumbnail: "/api/placeholder/300/200",
-      price: 39.99,
-      instructor: "Prof. Michael Chen",
-      topics: ["Shakespeare", "Poetry Analysis", "Essay Writing", "Literary Devices", "Modern Literature"]
-    },
-    {
-      id: 3,
-      title: "GCSE Biology: Life Sciences",
-      subject: "Biology",
-      level: "GCSE",
-      description: "Complete coverage of GCSE Biology including cell biology, genetics, ecology, and human biology.",
-      duration: "100 hours",
-      enrolled: 756,
-      rating: 4.7,
-      lessons: 112,
-      type: "science",
-      difficulty: "intermediate",
-      thumbnail: "/api/placeholder/300/200",
-      price: 44.99,
-      instructor: "Dr. Emily Roberts",
-      topics: ["Cell Biology", "Genetics", "Ecology", "Human Biology", "Evolution"]
-    },
-    {
-      id: 4,
-      title: "Chemistry Fundamentals",
-      subject: "Chemistry",
-      level: "GCSE",
-      description: "Learn atomic structure, chemical reactions, organic chemistry, and practical laboratory skills.",
-      duration: "90 hours",
-      enrolled: 623,
-      rating: 4.6,
-      lessons: 105,
-      type: "science",
-      difficulty: "intermediate",
-      thumbnail: "/api/placeholder/300/200",
-      price: 42.99,
-      instructor: "Dr. James Wilson",
-      topics: ["Atomic Structure", "Chemical Reactions", "Organic Chemistry", "Laboratory Skills", "Periodic Table"]
-    },
-    {
-      id: 5,
-      title: "Physics: Mechanics & Energy",
-      subject: "Physics",
-      level: "GCSE",
-      description: "Understand forces, motion, energy, electricity, and waves through interactive lessons.",
-      duration: "85 hours",
-      enrolled: 545,
-      rating: 4.7,
-      lessons: 95,
-      type: "science",
-      difficulty: "intermediate",
-      thumbnail: "/api/placeholder/300/200",
-      price: 41.99,
-      instructor: "Dr. Alan Turing",
-      topics: ["Mechanics", "Energy", "Electricity", "Waves", "Forces"]
-    },
-    {
-      id: 6,
-      title: "History: World Events & Civilizations",
-      subject: "History",
-      level: "GCSE",
-      description: "Explore major world events, civilizations, and historical developments from ancient to modern times.",
-      duration: "70 hours",
-      enrolled: 412,
-      rating: 4.8,
-      lessons: 82,
-      type: "humanities",
-      difficulty: "beginner",
-      thumbnail: "/api/placeholder/300/200",
-      price: 35.99,
-      instructor: "Dr. Margaret Brown",
-      topics: ["Ancient Civilizations", "World Wars", "Industrial Revolution", "Modern History", "Historical Analysis"]
-    }
-  ];
+  // Fetch courses when filters change
+  useEffect(() => {
+    const filters = {
+      search: searchTerm || undefined,
+      subject: selectedSubject !== 'all' ? selectedSubject : undefined,
+      level: selectedLevel !== 'all' ? selectedLevel.toLowerCase() : undefined,
+    };
+    fetchCourses(filters);
+  }, [searchTerm, selectedSubject, selectedLevel, fetchCourses]);
 
-  const subjects = ['all', 'Mathematics', 'English Literature', 'Biology', 'Chemistry', 'Physics', 'History'];
-  const levels = ['all', 'GCSE', 'A-Level'];
-
-  // Filter courses based on search and filters
-  const filteredCourses = useMemo(() => {
-    return allCourses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.topics.some(topic => topic.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesSubject = selectedSubject === 'all' || course.subject === selectedSubject;
-      const matchesLevel = selectedLevel === 'all' || course.level === selectedLevel;
-
-      return matchesSearch && matchesSubject && matchesLevel;
-    });
-  }, [allCourses, searchTerm, selectedSubject, selectedLevel]);
+  const subjects = ['all', 'mathematics', 'english', 'science', 'history', 'geography', 'other'];
+  const levels = ['all', 'gcse', 'igcse', 'a_level'];
 
   // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
@@ -172,12 +69,12 @@ const BrowseCourses = () => {
     );
   }
 
-  const getCourseTypeIcon = (type: string) => {
-    switch (type) {
-      case 'comprehensive': return <BookOpen className="h-4 w-4" />;
+  const getCourseTypeIcon = (subject: string) => {
+    switch (subject.toLowerCase()) {
+      case 'mathematics': return <BookOpen className="h-4 w-4" />;
+      case 'english': return <FileText className="h-4 w-4" />;
       case 'science': return <Video className="h-4 w-4" />;
-      case 'literature': return <FileText className="h-4 w-4" />;
-      case 'humanities': return <Headphones className="h-4 w-4" />;
+      case 'history': return <Headphones className="h-4 w-4" />;
       default: return <BookOpen className="h-4 w-4" />;
     }
   };
@@ -253,19 +150,35 @@ const BrowseCourses = () => {
 
             {/* Results Summary */}
             <div className="mb-6">
-              <p className="text-gray-600">
-                Found <span className="font-semibold">{filteredCourses.length}</span> courses
-              </p>
+              {loading ? (
+                <p className="text-gray-600">Loading courses...</p>
+              ) : error ? (
+                <div className="text-red-500">
+                  <p>Failed to load courses: {error}</p>
+                  <Button variant="outline" size="sm" onClick={() => fetchCourses()} className="mt-2">
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-gray-600">
+                  Found <span className="font-semibold">{courses.length}</span> courses
+                </p>
+              )}
             </div>
 
             {/* Course Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredCourses.map((course) => (
+              {loading ? (
+                <div className="col-span-full flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : courses.length > 0 ? (
+                courses.map((course) => (
                 <Card key={course.id} className="group cursor-pointer transition-all hover:shadow-lg">
                   {/* Course Thumbnail */}
                   <div className="aspect-video bg-gray-200 rounded-t-lg flex items-center justify-center">
-                    {getCourseTypeIcon(course.type)}
-                    <span className="ml-2 text-sm text-gray-600">{course.type}</span>
+                    {getCourseTypeIcon(course.subject)}
+                    <span className="ml-2 text-sm text-gray-600">{course.subject}</span>
                   </div>
 
                   <CardHeader className="pb-3">
@@ -281,11 +194,11 @@ const BrowseCourses = () => {
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
-                        {course.duration}
+                        {Math.round(course.duration / 60)}h {course.duration % 60}m
                       </div>
                       <div className="flex items-center gap-1">
                         <BookOpen className="h-4 w-4" />
-                        {course.lessons} lessons
+                        {course.chaptersCount || 0} chapters
                       </div>
                     </div>
                   </CardHeader>
@@ -297,7 +210,7 @@ const BrowseCourses = () => {
 
                     {/* Topics */}
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {course.topics.slice(0, 3).map((topic, index) => (
+                      {(course.topics || []).slice(0, 3).map((topic, index) => (
                         <span
                           key={index}
                           className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded"
@@ -305,9 +218,9 @@ const BrowseCourses = () => {
                           {topic}
                         </span>
                       ))}
-                      {course.topics.length > 3 && (
+                      {(course.topics || []).length > 3 && (
                         <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
-                          +{course.topics.length - 3} more
+                          +{(course.topics || []).length - 3} more
                         </span>
                       )}
                     </div>
@@ -317,11 +230,11 @@ const BrowseCourses = () => {
                       <div className="flex items-center gap-3 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
-                          <span>{course.enrolled.toLocaleString()}</span>
+                          <span>{course.enrollmentCount || 0}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Star className="h-4 w-4 text-yellow-500" />
-                          <span>{course.rating}</span>
+                          <span>{course.rating || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -334,7 +247,7 @@ const BrowseCourses = () => {
                     {/* Action Buttons */}
                     <div className="flex gap-2">
                       <Button className="flex-1 bg-black text-white hover:bg-gray-800">
-                        Enroll Now - £{course.price}
+                        {course.price === 0 ? 'Enroll Free' : `Enroll - £${course.price}`}
                       </Button>
                       <Button variant="outline" size="sm">
                         <Play className="h-4 w-4" />
@@ -346,7 +259,7 @@ const BrowseCourses = () => {
             </div>
 
             {/* No Results */}
-            {filteredCourses.length === 0 && (
+            {!loading && !error && courses.length === 0 && (
               <div className="text-center py-12">
                 <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No courses found</h3>
