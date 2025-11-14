@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export function middleware(request: NextRequest) {
-  // Just pass through for now - we'll handle auth in API routes
-  return NextResponse.next();
-}
+const isPublicRoute = createRouteMatcher(['/api/health(.*)']);
+
+export default clerkMiddleware((auth, req) => {
+  if (!isPublicRoute(req)) {
+    // For protected routes, redirect to sign-in or return unauthorized
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+});
 
 export const config = {
   matcher: [
