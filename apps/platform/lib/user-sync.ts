@@ -25,36 +25,33 @@ export async function ensureUserExists(): Promise<ClerkUser> {
   });
 
   if (!user) {
-    // Get user info from Clerk using the clerkClient from auth
-    const { getToken } = await auth();
-    const token = await getToken({ template: 'default' });
+    // Create a minimal user record for testing
+    // In a real app with proper Clerk setup, you'd fetch user details from Clerk
+    try {
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: `user-${userId.slice(0, 8)}@example.com`, // Generate unique email
+          name: 'Test User',
+          role: 'student', // Default role
+        },
+      });
 
-    if (!token) {
-      throw new Error('Failed to get Clerk token');
+      // Create user settings with defaults
+      await prisma.userSettings.create({
+        data: {
+          userId: user.id,
+          dailyGoal: 60, // 60 minutes per day
+          notificationsEnabled: true,
+          theme: 'light',
+        },
+      });
+
+      console.log(`Created user: ${user.id} for Clerk ID: ${userId}`);
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      throw new Error('Failed to create user in database');
     }
-
-    // For now, create a minimal user record
-    // In production, you'd want to fetch the user details from Clerk API
-    user = await prisma.user.create({
-      data: {
-        clerkId: userId,
-        email: 'user@example.com', // This should be fetched from Clerk API
-        name: 'User', // This should be fetched from Clerk API
-        role: 'student', // Default role
-      },
-    });
-
-    // Create user settings with defaults
-    await prisma.userSettings.create({
-      data: {
-        userId: user.id,
-        dailyGoal: 60, // 60 minutes per day
-        notificationsEnabled: true,
-        theme: 'light',
-      },
-    });
-
-    console.log(`Created user: ${user.id} for Clerk ID: ${userId}`);
   }
 
   return {
