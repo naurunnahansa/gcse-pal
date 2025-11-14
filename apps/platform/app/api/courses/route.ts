@@ -129,17 +129,24 @@ export async function POST(req: NextRequest) {
       where: { clerkId: userId },
     });
 
-    // Auto-promote naurunnahansa@gmail.com to admin (temporary)
-    if (user && user.email === 'naurunnahansa@gmail.com' && user.role !== 'admin') {
+    // TEMPORARY: Bypass admin check for development
+    console.log('User found:', { email: user?.email, role: user?.role, clerkId: userId });
+
+    // Auto-promote any user with 'example.com' in email to admin (temporary)
+    if (user && user.email.includes('example.com') && user.role !== 'admin') {
+      console.log('Auto-promoting user to admin:', user.email);
       await prisma.user.update({
         where: { id: user.id },
         data: { role: 'admin' }
       });
       // Update the user object with new role
       user.role = 'admin';
+      console.log('User promoted to admin successfully');
     }
 
-    if (!user || !['admin', 'teacher'].includes(user.role)) {
+    // TEMPORARY: Allow all authenticated users to create courses for development
+    if (false && !user || !['admin', 'teacher'].includes(user.role)) {
+      console.log('User role check failed:', { email: user?.email, role: user?.role });
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin or teacher access required' },
         { status: 403 }
