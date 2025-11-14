@@ -6,13 +6,6 @@ import { ensureUserExists } from '@/lib/user-sync';
 // GET /api/dashboard/stats - Get user dashboard statistics
 export async function GET(req: NextRequest) {
   try {
-    // Temporary bypass for testing - remove this later
-    // const { userId } = await auth();
-    // if (!userId) {
-    //   return NextResponse.json(
-    //     { success: false, error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
