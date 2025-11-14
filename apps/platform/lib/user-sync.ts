@@ -42,7 +42,12 @@ export async function ensureUserExists(): Promise<ClerkUser> {
         data: {
           userId: user.id,
           dailyGoal: 60, // 60 minutes per day
-          notificationsEnabled: true,
+          emailNotifications: true,
+          pushNotifications: true,
+          studyReminders: true,
+          deadlineReminders: true,
+          preferredStudyTime: 'evening',
+          studyDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday-Friday
           theme: 'light',
         },
       });
