@@ -13,28 +13,15 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware((auth, req) => {
-  // Skip middleware for static assets and internal Next.js routes only
-  if (
-    req.nextUrl.pathname.startsWith('/_next/') ||
-    req.nextUrl.pathname.startsWith('/favicon.') ||
-    req.nextUrl.pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check if route is public first
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
 
-  // Protect all other routes - check if user is authenticated
   const { userId } = auth();
   if (!userId) {
-    // Not authenticated, redirect to sign in
     const signInUrl = new URL('/auth/signin', req.url);
     return NextResponse.redirect(signInUrl);
   }
 
-  // User is authenticated, continue
   return NextResponse.next();
 });
