@@ -1,29 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/auth/sign-in(.*)',
-  '/auth/sign-up(.*)',
-  '/api/webhooks(.*)',
-  '/api/courses(.*)', // Allow public course listing
-  '/api/seed-data(.*)', // Development seeding endpoint
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();
-
-  // Handle unauthenticated users trying to access protected routes
-  if (!userId && !isPublicRoute(req)) {
-    const { origin } = new URL(req.url);
-    return NextResponse.redirect(`${origin}/auth/sign-in`);
-  }
-
-  // Note: User database sync is handled in API routes and page components,
-  // not in middleware to avoid edge runtime issues with Prisma
-
+export function middleware(request: NextRequest) {
+  // Just pass through for now - we'll handle auth in API routes
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [
