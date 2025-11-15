@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { UnifiedSidebar } from './UnifiedSidebar';
-import { Home, Settings, BookOpen, Brain, MessageCircle } from 'lucide-react';
+import { Home, Settings, BookOpen, Brain, MessageCircle, BarChart3 } from 'lucide-react';
 
 interface ModeOption {
   id: string;
@@ -21,6 +21,10 @@ interface UnifiedLayoutProps {
   modeOptions?: ModeOption[];
   activeMode?: string;
   onModeChange?: (mode: string) => void;
+  showCourseTabs?: boolean;
+  courseId?: string;
+  activeTab?: string;
+  fullScreen?: boolean;
 }
 
 const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
@@ -30,11 +34,16 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   subjectName,
   modeOptions,
   activeMode,
-  onModeChange
+  onModeChange,
+  showCourseTabs = false,
+  courseId,
+  activeTab,
+  fullScreen = false
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Determine page title based on current route
   const getPageTitle = () => {
@@ -78,6 +87,66 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
             <h1 className="text-lg font-semibold">
               {subjectName || getPageTitle()}
             </h1>
+
+            {/* Course Tabs */}
+            {showCourseTabs && courseId && (
+              <nav className="flex space-x-6 ml-8">
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'overview'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => router.push(`/learning/${courseId}/overview`)}
+                >
+                  Overview
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'learn'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => router.push(`/learning/${courseId}/learn`)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Learn
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'evaluate'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => router.push(`/learning/${courseId}/evaluate`)}
+                >
+                  <Brain className="h-4 w-4" />
+                  Evaluate
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'chat'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => router.push(`/learning/${courseId}/chat`)}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Chat
+                </button>
+                <button
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 ${
+                    activeTab === 'progress'
+                      ? 'border-black text-black'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => router.push(`/learning/${courseId}/progress`)}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Progress
+                </button>
+              </nav>
+            )}
           </div>
 
           <div className="px-6 flex items-center gap-4">
@@ -121,7 +190,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 bg-gray-50/50">
+        <main className={`flex-1 ${fullScreen ? 'bg-white' : 'bg-gray-50/50'}`}>
           {children}
         </main>
       </div>
