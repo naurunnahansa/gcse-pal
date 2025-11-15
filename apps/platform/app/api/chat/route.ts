@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import {
   streamText,
   type UIMessage,
+  convertToModelMessages,
 } from "ai";
 import { auth } from "@clerk/nextjs/server";
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     const result = streamText({
       model: selectedModel,
       system: systemPrompt,
-      messages: messages as any[],
+      messages: convertToModelMessages(messages),
     });
 
     return result.toUIMessageStreamResponse();
