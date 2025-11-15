@@ -4,13 +4,16 @@ import {
   db,
   users,
   enrollments,
-  studySessions,
-  quizAttempts,
+  activityLog,
+  quizSubmissions,
+  userItems,
   tasks,
   courses,
   lessons,
   progress,
-  userSettings
+  userSettings,
+  getUserActivityStats,
+  getQuizStats
 } from '@/lib/db/queries';
 import { ensureUserExists } from '@/lib/user-sync';
 import { eq, and, gte, lte, inArray, desc, asc, count, sum, avg } from 'drizzle-orm';
@@ -67,46 +70,36 @@ export async function GET(req: NextRequest) {
         ))
         .then(result => result[0]?.count || 0),
 
-      // Total study time in minutes
-      db.select({ total: sum(studySessions.duration) })
-        .from(studySessions)
-        .where(eq(studySessions.userId, user.id))
-        .then(result => result[0]?.total || 0),
+      // Get study time using optimized activity log
+      getUserActivityStats(user.id, 30).then(stats => stats.totalStudyTime),
 
-      // Average quiz scores
-      db.select({ average: avg(quizAttempts.score) })
-        .from(quizAttempts)
-        .where(eq(quizAttempts.userId, user.id))
-        .then(result => result[0]?.average || 0),
+      // Average quiz scores using consolidated quiz submissions
+      getQuizStats(user.id).then(stats => stats.averageScore),
 
-      // Recent activity (last 7 days)
-      db.select({
-        id: studySessions.id,
-        userId: studySessions.userId,
-        courseId: studySessions.courseId,
-        lessonId: studySessions.lessonId,
-        startTime: studySessions.startTime,
-        duration: studySessions.duration,
-        notes: studySessions.notes,
-      })
-        .from(studySessions)
-        .where(and(
-          eq(studySessions.userId, user.id),
-          gte(studySessions.startTime, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // Last 7 days
-        ))
-        .orderBy(desc(studySessions.startTime))
-        .limit(10),
+      // Recent activity (last 7 days) using consolidated activity log
+      findUserActivities(user.id, undefined, 10, 0)
+        .then(activities => activities.map(activity => ({
+          id: activity.id,
+          userId: activity.userId,
+          courseId: activity.courseId,
+          lessonId: activity.lessonId,
+          startTime: activity.startedAt,
+          duration: activity.duration,
+          activityType: activity.activityType,
+          data: activity.data,
+        }))),
 
-      // Upcoming deadlines (tasks with due dates in next 30 days)
+      // Upcoming deadlines (tasks from consolidated user_items with due dates in next 30 days)
       db.select()
-        .from(tasks)
+        .from(userItems)
         .where(and(
-          eq(tasks.userId, user.id),
-          lte(tasks.dueDate, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)), // Next 30 days
-          gte(tasks.dueDate, new Date()),
-          eq(tasks.status, 'pending')
+          eq(userItems.userId, user.id),
+          eq(userItems.itemType, 'task'),
+          lte(userItems.metadata, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)), // Next 30 days
+          gte(userItems.metadata, new Date()),
+          eq(userItems.status, 'active')
         ))
-        .orderBy(asc(tasks.dueDate))
+        .orderBy(asc(userItems.createdAt))
         .limit(5),
     ]);
 

@@ -30,6 +30,11 @@ export const groupRoleEnum = pgEnum('group_role', ['owner', 'moderator', 'member
 export const messageTypeEnum = pgEnum('message_type', ['text', 'file', 'link']);
 export const reviewQualityEnum = pgEnum('review_quality', ['again', 'hard', 'good', 'easy']);
 
+// New enums for consolidated tables
+export const itemTypeEnum = pgEnum('item_type', ['note', 'task', 'bookmark']);
+export const itemStatusEnum = pgEnum('item_status', ['active', 'completed', 'archived']);
+export const activityTypeEnumNew = pgEnum('activity_type_new', ['study_session', 'video_watch', 'quiz_attempt', 'lesson_view']);
+
 // Users table
 export const users = pgTable(
   'users',
@@ -108,6 +113,10 @@ export const lessons = pgTable(
     title: text('title').notNull(),
     description: text('description').notNull(),
     content: text('content'),
+    // Enhanced content management with JSONB
+    contentData: jsonb('content_data'), // Consolidated content with markdown, resources, etc.
+    videoData: jsonb('video_data'), // Consolidated video data with Mux info, duration, etc.
+    // Legacy fields for backward compatibility
     videoUrl: text('video_url'),
     videoDuration: integer('video_duration'), // in milliseconds
     markdownPath: text('markdown_path'),
@@ -125,6 +134,8 @@ export const lessons = pgTable(
   (table) => ({
     chapterIdIdx: index('lessons_chapter_id_idx').on(table.chapterId),
     chapterOrderIdx: uniqueIndex('lessons_chapter_order_idx').on(table.chapterId, table.order),
+    contentDataGinIdx: index('lessons_content_data_gin_idx').using('gin', table.contentData),
+    videoDataGinIdx: index('lessons_video_data_gin_idx').using('gin', table.videoData),
   })
 );
 
@@ -529,6 +540,97 @@ export const evaluationStats = pgTable(
   })
 );
 
+// New Consolidated Tables for Database Optimization
+
+// User Items table - consolidates notes, tasks, bookmarks
+export const userItems = pgTable(
+  'user_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    lessonId: text('lesson_id').notNull(),
+    itemType: itemTypeEnum('item_type').notNull(),
+    title: text('title').notNull(),
+    content: text('content'),
+    metadata: jsonb('metadata'),
+    status: itemStatusEnum('status').default('active'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('user_items_user_id_idx').on(table.userId),
+    lessonIdIdx: index('user_items_lesson_id_idx').on(table.lessonId),
+    itemTypeIdx: index('user_items_item_type_idx').on(table.itemType),
+    userLessonTypeIdx: index('user_items_user_lesson_type_idx').on(table.userId, table.lessonId, table.itemType),
+    metadataGinIdx: index('user_items_metadata_gin_idx').using('gin', table.metadata),
+  })
+);
+
+// Item Tags table - unified tagging for user items
+export const itemTags = pgTable(
+  'item_tags',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: text('item_id').notNull(),
+    tag: text('tag').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    itemIdIdx: index('item_tags_item_id_idx').on(table.itemId),
+    tagIdx: index('item_tags_tag_idx').on(table.tag),
+    itemTagIdx: uniqueIndex('item_tags_item_tag_idx').on(table.itemId, table.tag),
+  })
+);
+
+// Activity Log table - consolidates study_sessions and study_activities
+export const activityLog = pgTable(
+  'activity_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    lessonId: text('lesson_id'),
+    courseId: text('course_id'),
+    activityType: activityTypeEnumNew('activity_type').notNull(),
+    duration: integer('duration'), // in minutes
+    data: jsonb('data'),
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    endedAt: timestamp('ended_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('activity_log_user_id_idx').on(table.userId),
+    lessonIdIdx: index('activity_log_lesson_id_idx').on(table.lessonId),
+    courseIdIdx: index('activity_log_course_id_idx').on(table.courseId),
+    activityTypeIdx: index('activity_log_activity_type_idx').on(table.activityType),
+    userDateIdx: index('activity_log_user_date_idx').on(table.userId, table.startedAt.desc()),
+    dataGinIdx: index('activity_log_data_gin_idx').using('gin', table.data),
+  })
+);
+
+// Quiz Submissions table - consolidates quiz_attempts and quiz_answers
+export const quizSubmissions = pgTable(
+  'quiz_submissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id').notNull(),
+    quizId: text('quiz_id').notNull(),
+    score: real('score').notNull(),
+    passed: boolean('passed').notNull(),
+    answers: jsonb('answers').notNull(), // Array of question answers with metadata
+    startedAt: timestamp('started_at').defaultNow().notNull(),
+    completedAt: timestamp('completed_at'),
+    attemptNumber: integer('attempt_number').notNull(),
+    timeSpent: integer('time_spent'), // in seconds
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('quiz_submissions_user_id_idx').on(table.userId),
+    quizIdIdx: index('quiz_submissions_quiz_id_idx').on(table.quizId),
+    userQuizIdx: index('quiz_submissions_user_quiz_idx').on(table.userId, table.quizId),
+    userQuizAttemptIdx: uniqueIndex('quiz_submissions_user_quiz_attempt_idx').on(table.userId, table.quizId, table.attemptNumber),
+  })
+);
+
 // Export all tables and enums
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -601,3 +703,16 @@ export type NewFlashCardReview = typeof flashCardReviews.$inferInsert;
 
 export type EvaluationStats = typeof evaluationStats.$inferSelect;
 export type NewEvaluationStats = typeof evaluationStats.$inferInsert;
+
+// New consolidated table types
+export type UserItem = typeof userItems.$inferSelect;
+export type NewUserItem = typeof userItems.$inferInsert;
+
+export type ItemTag = typeof itemTags.$inferSelect;
+export typeNewItemTag = typeof itemTags.$inferInsert;
+
+export type ActivityLog = typeof activityLog.$inferSelect;
+export type NewActivityLog = typeof activityLog.$inferInsert;
+
+export type QuizSubmission = typeof quizSubmissions.$inferSelect;
+export type NewQuizSubmission = typeof quizSubmissions.$inferInsert;
