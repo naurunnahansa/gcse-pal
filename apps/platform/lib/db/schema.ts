@@ -45,12 +45,23 @@ export const users = pgTable(
     name: text('name').notNull(),
     avatar: text('avatar'),
     role: userRoleEnum('role').default('student'),
+    preferences: jsonb('preferences').$default({
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      studyReminders: true,
+      deadlineReminders: true,
+      dailyGoal: 60,
+      preferredStudyTime: 'evening',
+      studyDays: [1, 2, 3, 4, 5]
+    }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
     clerkIdIdx: index('users_clerk_id_idx').on(table.clerkId),
     emailIdx: index('users_email_idx').on(table.email),
+    preferencesGinIdx: index('users_preferences_gin_idx').using('gin', table.preferences),
   })
 );
 
@@ -428,12 +439,14 @@ export const studyGroups = pgTable(
     creatorId: text('creator_id').notNull(),
     isPrivate: boolean('is_private').default(false),
     memberCount: integer('member_count').default(1),
+    members: jsonb('members').$default([]), // Array of member objects with user_id, role, joined_at
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
     courseIdIdx: index('study_groups_course_id_idx').on(table.courseId),
     creatorIdIdx: index('study_groups_creator_id_idx').on(table.creatorId),
+    membersGinIdx: index('study_groups_members_gin_idx').using('gin', table.members),
   })
 );
 
