@@ -198,22 +198,21 @@ const CourseChatPage = () => {
       return;
     }
 
-    // Create context-aware message about the course
+    // Create course context for system prompt
     const courseContext = course ?
       `You are helping with the course "${course.title}" in ${course.subject}. ${course.description}\n\nTopics covered: ${course.topics.join(', ')}\nDifficulty: ${course.difficulty}\nLevel: ${course.level}`
       : 'You are helping with a course.';
 
-    const fullMessage = `${courseContext}\n\nUser question: ${message.text || 'Sent with attachments'}`;
-
     sendMessage(
       {
-        text: fullMessage,
+        text: message.text || 'Sent with attachments',
         files: message.files
       },
       {
         body: {
           model: chatModel,
           webSearch: webSearch,
+          courseContext: courseContext,
         },
       },
     );
