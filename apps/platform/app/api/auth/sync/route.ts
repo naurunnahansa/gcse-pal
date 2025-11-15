@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import { db, users, userSettings } from '@/lib/db/queries';
 import { getAuthenticatedUser, syncUserWithDatabase } from '@/lib/clerk-helper';
+import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,31 +51,55 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: clerkUser.userId },
-      include: {
-        userSettings: true,
-      },
-    });
+    const userResults = await db.select({
+      id: users.id,
+      clerkId: users.clerkId,
+      email: users.email,
+      name: users.name,
+      avatar: users.avatar,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
+      .where(eq(users.clerkId, clerkUser.userId))
+      .limit(1);
 
-    if (!user) {
+    if (userResults.length === 0) {
       // User not in database yet, create them
       await syncUserWithDatabase(clerkUser.userId);
 
       // Get the user with settings
-      const syncedUser = await prisma.user.findUnique({
-        where: { clerkId: clerkUser.userId },
-        include: {
-          userSettings: true,
-        },
-      });
+      const syncedUserResults = await db.select({
+        id: users.id,
+        clerkId: users.clerkId,
+        email: users.email,
+        name: users.name,
+        avatar: users.avatar,
+        role: users.role,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+        .from(users)
+        .where(eq(users.clerkId, clerkUser.userId))
+        .limit(1);
 
-      if (!syncedUser) {
+      if (syncedUserResults.length === 0) {
         return NextResponse.json(
           { success: false, error: 'Failed to create user' },
           { status: 500 }
         );
       }
+
+      const syncedUser = syncedUserResults[0];
+
+      // Get user settings
+      const settingsResults = await db.select()
+        .from(userSettings)
+        .where(eq(userSettings.userId, syncedUser.id))
+        .limit(1);
+
+      const settings = settingsResults[0];
 
       return NextResponse.json({
         success: true,
@@ -86,19 +111,29 @@ export async function GET(req: NextRequest) {
           avatar: syncedUser.avatar,
           role: syncedUser.role,
           username: clerkUser.username,
-          settings: syncedUser.userSettings ? {
-            theme: syncedUser.userSettings.theme,
-            emailNotifications: syncedUser.userSettings.emailNotifications,
-            pushNotifications: syncedUser.userSettings.pushNotifications,
-            studyReminders: syncedUser.userSettings.studyReminders,
-            deadlineReminders: syncedUser.userSettings.deadlineReminders,
-            dailyGoal: syncedUser.userSettings.dailyGoal,
-            preferredStudyTime: syncedUser.userSettings.preferredStudyTime,
-            studyDays: syncedUser.userSettings.studyDays,
+          settings: settings ? {
+            theme: settings.theme,
+            emailNotifications: settings.emailNotifications,
+            pushNotifications: settings.pushNotifications,
+            studyReminders: settings.studyReminders,
+            deadlineReminders: settings.deadlineReminders,
+            dailyGoal: settings.dailyGoal,
+            preferredStudyTime: settings.preferredStudyTime,
+            studyDays: settings.studyDays,
           } : null,
         },
       });
     }
+
+    const user = userResults[0];
+
+    // Get user settings
+    const settingsResults = await db.select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, user.id))
+      .limit(1);
+
+    const settings = settingsResults[0];
 
     return NextResponse.json({
       success: true,
@@ -110,15 +145,15 @@ export async function GET(req: NextRequest) {
         avatar: user.avatar,
         role: user.role,
         username: clerkUser.username,
-        settings: user.userSettings ? {
-          theme: user.userSettings.theme,
-          emailNotifications: user.userSettings.emailNotifications,
-          pushNotifications: user.userSettings.pushNotifications,
-          studyReminders: user.userSettings.studyReminders,
-          deadlineReminders: user.userSettings.deadlineReminders,
-          dailyGoal: user.userSettings.dailyGoal,
-          preferredStudyTime: user.userSettings.preferredStudyTime,
-          studyDays: user.userSettings.studyDays,
+        settings: settings ? {
+          theme: settings.theme,
+          emailNotifications: settings.emailNotifications,
+          pushNotifications: settings.pushNotifications,
+          studyReminders: settings.studyReminders,
+          deadlineReminders: settings.deadlineReminders,
+          dailyGoal: settings.dailyGoal,
+          preferredStudyTime: settings.preferredStudyTime,
+          studyDays: settings.studyDays,
         } : null,
       },
     });

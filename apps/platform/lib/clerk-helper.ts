@@ -1,5 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import { db, users, userSettings } from '@/lib/db/queries';
+import { eq } from 'drizzle-orm';
 
 /**
  * Get the current authenticated user from Clerk
@@ -50,39 +51,59 @@ export async function syncUserWithDatabase(clerkUserId: string) {
       throw new Error('User email not found');
     }
 
-    // Upsert user in our database
-    const user = await prisma.user.upsert({
-      where: { clerkId: clerkUserId },
-      update: {
-        email,
-        name,
-        avatar,
-      },
-      create: {
-        clerkId: clerkUserId,
-        email,
-        name,
-        avatar,
-        role: 'student', // Default role
-      },
-    });
+    // Check if user exists
+    const existingUser = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, clerkUserId))
+      .limit(1);
+
+    let user;
+    if (existingUser.length > 0) {
+      // Update existing user
+      const updatedUsers = await db.update(users)
+        .set({
+          email,
+          name,
+          avatar,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.clerkId, clerkUserId))
+        .returning();
+      user = updatedUsers[0];
+    } else {
+      // Create new user
+      const newUsers = await db.insert(users)
+        .values({
+          clerkId: clerkUserId,
+          email,
+          name,
+          avatar,
+          role: 'student', // Default role
+        })
+        .returning();
+      user = newUsers[0];
+    }
 
     // Create default user settings if they don't exist
-    await prisma.userSettings.upsert({
-      where: { userId: user.id },
-      update: {},
-      create: {
-        userId: user.id,
-        theme: 'light',
-        emailNotifications: true,
-        pushNotifications: true,
-        studyReminders: true,
-        deadlineReminders: true,
-        dailyGoal: 60, // 60 minutes default
-        preferredStudyTime: 'evening',
-        studyDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday to Friday
-      },
-    });
+    const existingSettings = await db.select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, user.id))
+      .limit(1);
+
+    if (existingSettings.length === 0) {
+      await db.insert(userSettings)
+        .values({
+          userId: user.id,
+          theme: 'light',
+          emailNotifications: true,
+          pushNotifications: true,
+          studyReminders: true,
+          deadlineReminders: true,
+          dailyGoal: 60, // 60 minutes default
+          preferredStudyTime: 'evening',
+          studyDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday to Friday
+        });
+    }
 
     return user;
   } catch (error) {
@@ -96,13 +117,36 @@ export async function syncUserWithDatabase(clerkUserId: string) {
  */
 export async function getDbUserFromClerkId(clerkUserId: string) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { clerkId: clerkUserId },
-      include: {
-        userSettings: true,
-      },
-    });
-    return user;
+    const userResults = await db.select({
+      id: users.id,
+      clerkId: users.clerkId,
+      email: users.email,
+      name: users.name,
+      avatar: users.avatar,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
+      .where(eq(users.clerkId, clerkUserId))
+      .limit(1);
+
+    if (userResults.length === 0) {
+      return null;
+    }
+
+    const user = userResults[0];
+
+    // Get user settings
+    const settingsResults = await db.select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, user.id))
+      .limit(1);
+
+    return {
+      ...user,
+      userSettings: settingsResults[0] || null,
+    };
   } catch (error) {
     console.error('Error getting database user:', error);
     return null;
