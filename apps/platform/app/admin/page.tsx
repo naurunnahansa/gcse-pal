@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -32,6 +32,7 @@ import {
   FileText,
   Settings,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface Course {
@@ -48,16 +49,79 @@ interface Course {
   createdAt: string;
 }
 
+interface AdminData {
+  platformStats: Array<{
+    title: string;
+    value: string;
+    change: string;
+    icon: string;
+    color: string;
+  }>;
+  courses: Course[];
+  students: Array<{
+    id: string;
+    name: string;
+    email: string;
+    enrolled: number;
+    progress: number;
+    lastActive: string;
+  }>;
+  summary: {
+    totalUsers: number;
+    totalCourses: number;
+    publishedCourses: number;
+    totalEnrollments: number;
+    activeCourses: number;
+    recentEnrollments: number;
+    avgCompletionRate: number;
+    totalStudyTime: number;
+  };
+}
+
 const AdminDashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
+  const [adminData, setAdminData] = useState<AdminData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      if (!isAuthenticated || !user) return;
+
+      try {
+        setLoading(true);
+        const response = await fetch('/api/admin/stats');
+        if (!response.ok) {
+          if (response.status === 403) {
+            setError('Access denied. Admin privileges required.');
+            return;
+          }
+          throw new Error('Failed to fetch admin data');
+        }
+        const data = await response.json();
+        if (data.success) {
+          setAdminData(data.data);
+        } else {
+          setError(data.error || 'Failed to load admin data');
+        }
+      } catch (err) {
+        console.error('Error fetching admin data:', err);
+        setError('Failed to load admin dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, [isAuthenticated, user]);
 
   // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
@@ -65,7 +129,7 @@ const AdminDashboard = () => {
   }
 
   // Simple admin check - allowing all authenticated users for now
-  const isAdmin = true;
+  const isAdmin = user?.role === 'admin' || user?.role === 'teacher';
 
   if (!isAuthenticated || !user || !isAdmin) {
     return (
@@ -81,75 +145,58 @@ const AdminDashboard = () => {
     );
   }
 
-  // Mock data
-  const courses: Course[] = [
-    {
-      id: '1',
-      title: 'GCSE Mathematics - Algebra Fundamentals',
-      description: 'Master algebraic expressions, equations, and graphs',
-      subject: 'Mathematics',
-      difficulty: 'Intermediate',
-      status: 'published',
-      students: 245,
-      avgScore: 78,
-      completion: 82,
-      author: 'Dr. Sarah Johnson',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      title: 'Biology: Cell Structure and Function',
-      description: 'Comprehensive guide to cellular biology and organelles',
-      subject: 'Biology',
-      difficulty: 'Beginner',
-      status: 'published',
-      students: 189,
-      avgScore: 85,
-      completion: 76,
-      author: 'Prof. Michael Chen',
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '3',
-      title: 'English Literature - Shakespeare Analysis',
-      description: 'In-depth analysis of Macbeth, Romeo and Juliet, and more',
-      subject: 'English Literature',
-      difficulty: 'Advanced',
-      status: 'draft',
-      students: 0,
-      avgScore: 0,
-      completion: 45,
-      author: 'Dr. Emily Rodriguez',
-      createdAt: '2024-01-20'
-    },
-    {
-      id: '4',
-      title: 'Chemistry: Atomic Structure and Bonding',
-      description: 'Understanding atoms, molecules, and chemical bonds',
-      subject: 'Chemistry',
-      difficulty: 'Intermediate',
-      status: 'published',
-      students: 156,
-      avgScore: 72,
-      completion: 68,
-      author: 'Dr. James Wilson',
-      createdAt: '2024-01-08'
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Error</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!adminData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Use real data from API
+  const courses = adminData.courses;
+  const students = adminData.students;
+  const platformStats = adminData.platformStats.map(stat => ({
+    ...stat,
+    icon: getIconByName(stat.icon)
+  }));
+
+  // Helper function to get Lucide icon by name
+  function getIconByName(iconName: string) {
+    switch (iconName) {
+      case "Users": return Users;
+      case "BookOpen": return BookOpen;
+      case "Target": return Target;
+      case "Award": return Award;
+      default: return BarChart3;
     }
-  ];
-
-  const students = [
-    { id: '1', name: 'Alice Johnson', email: 'alice@example.com', enrolled: 4, progress: 68, lastActive: '2 hours ago' },
-    { id: '2', name: 'Bob Smith', email: 'bob@example.com', enrolled: 3, progress: 45, lastActive: '1 day ago' },
-    { id: '3', name: 'Carol White', email: 'carol@example.com', enrolled: 5, progress: 82, lastActive: '30 minutes ago' },
-    { id: '4', name: 'David Brown', email: 'david@example.com', enrolled: 2, progress: 23, lastActive: '3 days ago' },
-  ];
-
-  const platformStats = [
-    { title: "Total Students", value: "1,247", change: "+12%", icon: Users, color: "text-blue-600" },
-    { title: "Active Courses", value: "8", change: "+2", icon: BookOpen, color: "text-green-600" },
-    { title: "Avg Completion", value: "73%", change: "+5%", icon: Target, color: "text-purple-600" },
-    { title: "Satisfaction", value: "4.8", change: "+0.2", icon: Award, color: "text-orange-600" },
-  ];
+  }
 
   const getStatusColor = (status: Course['status']) => {
     switch (status) {

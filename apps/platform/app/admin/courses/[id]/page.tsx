@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle, ArrowLeft } from 'lucide-react';
+import { MuxVideoPlayer } from '@/components/MuxVideoPlayer';
 import { toast } from 'sonner';
 import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import { useAuth } from '@/components/AuthProvider';
@@ -31,9 +32,13 @@ interface Lesson {
   description: string;
   content?: string;
   videoUrl?: string;
+  videoDuration?: number;
   duration: number;
   order: number;
   isPublished: boolean;
+  muxAssetId?: string;
+  muxUploadId?: string;
+  muxStatus?: string;
 }
 
 interface CourseData {
@@ -271,7 +276,7 @@ const EditCoursePage = () => {
     }));
 
     setExpandedChapters(prev => new Set([...prev, newChapter.id]));
-    setSelectedItem({ type: 'chapter', id: newChapter.id });
+    setSelectedPage({ type: 'chapter', chapterId: newChapter.id });
   };
 
   const updateChapter = (chapterId: string, updates: Partial<Chapter>) => {
@@ -288,7 +293,7 @@ const EditCoursePage = () => {
       ...prev,
       chapters: prev.chapters.filter(chapter => chapter.id !== chapterId)
     }));
-    setSelectedItem(null);
+    setSelectedPage({ type: 'course' });
   };
 
   const addLesson = (chapterId: string) => {
@@ -311,7 +316,7 @@ const EditCoursePage = () => {
       )
     }));
 
-    setSelectedItem({ type: 'lesson', id: newLesson.id });
+    setSelectedPage({ type: 'lesson', chapterId: chapterId, lessonId: newLesson.id });
   };
 
   const updateLesson = (chapterId: string, lessonId: string, field: keyof Lesson, value: any) => {
@@ -322,7 +327,7 @@ const EditCoursePage = () => {
       lesson.id === lessonId ? { ...lesson, [field]: value } : lesson
     );
 
-    updateChapter(chapterId, 'lessons', updatedLessons);
+    updateChapter(chapterId, { lessons: updatedLessons });
   };
 
   const removeLesson = (chapterId: string, lessonId: string) => {
@@ -330,7 +335,7 @@ const EditCoursePage = () => {
     if (!chapter) return;
 
     const updatedLessons = chapter.lessons.filter(lesson => lesson.id !== lessonId);
-    updateChapter(chapterId, 'lessons', updatedLessons);
+    updateChapter(chapterId, { lessons: updatedLessons });
   };
 
   const calculateTotalDuration = () => {
@@ -412,7 +417,7 @@ const EditCoursePage = () => {
     if (selectedPage.type === 'course') {
       handleInputChange(field as keyof CourseData, value);
     } else if (selectedPage.type === 'chapter') {
-      updateChapter(selectedPage.chapterId!, field as keyof Chapter, value);
+      updateChapter(selectedPage.chapterId!, { [field]: value });
     } else if (selectedPage.type === 'lesson') {
       updateLesson(selectedPage.chapterId!, selectedPage.lessonId!, field as keyof Lesson, value);
     }
@@ -809,14 +814,33 @@ const EditCoursePage = () => {
                         </div>
 
                         {content.type === 'lesson' && (
-                          <div className="space-y-4">
+                          <div className="space-y-6">
                             <div>
-                              <Label className="text-sm font-medium text-gray-700">Video URL</Label>
-                              <Input
-                                value={content.videoUrl || ''}
-                                onChange={(e) => updateSelectedContent('videoUrl', e.target.value)}
-                                placeholder="https://example.com/video.mp4"
-                                className="mt-1"
+                              <Label className="text-sm font-medium text-gray-700 mb-2 block">Video Content</Label>
+                              <MuxVideoPlayer
+                                lessonId={content.lesson?.id}
+                                chapterId={selectedPage.chapterId}
+                                courseId={courseId}
+                                videoUrl={content.videoUrl}
+                                muxStatus={content.lesson?.muxStatus}
+                                editable={true}
+                                onVideoUploadStart={() => {
+                                  toast.info('Video upload started', {
+                                    description: 'Your video is being uploaded and processed.'
+                                  });
+                                }}
+                                onVideoUploadComplete={(message) => {
+                                  toast.success('Video uploaded successfully', {
+                                    description: message || 'Your video is being processed.'
+                                  });
+                                  // Refresh the course data to get updated video status
+                                  fetchCourse();
+                                }}
+                                onVideoUploadError={(error) => {
+                                  toast.error('Video upload failed', {
+                                    description: error
+                                  });
+                                }}
                               />
                             </div>
 

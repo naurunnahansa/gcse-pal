@@ -3,8 +3,145 @@
 import { Brain, BookOpen, Award, Globe, Users, Target } from "lucide-react";
 import CardSwap, { Card } from "@/components/CardSwap";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+
+interface DashboardStats {
+  progress: {
+    totalCoursesEnrolled: number;
+    totalStudyTime: number;
+    currentStreak: number;
+    weeklyGoal: {
+      target: number;
+      current: number;
+      percentage: number;
+    };
+  };
+  recentActivity: Array<{
+    type: string;
+    course: {
+      title: string;
+      subject: string;
+    };
+    lesson?: {
+      title: string;
+    };
+  }>;
+  enrolledCourses: Array<{
+    id: string;
+    title: string;
+    subject: string;
+    enrollment: {
+      progress: number;
+    };
+  }>;
+}
 
 const ShowcaseCards = () => {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch real dashboard stats for demo purposes
+    const fetchStats = async () => {
+      try {
+        // For demo purposes, we'll create realistic mock data
+        // In a real scenario, this would fetch from the API
+        const demoStats: DashboardStats = {
+          progress: {
+            totalCoursesEnrolled: 3,
+            totalStudyTime: 270, // 4.5 hours in minutes
+            currentStreak: 5,
+            weeklyGoal: {
+              target: 420, // 7 hours * 60 minutes
+              current: 270,
+              percentage: 64,
+            },
+          },
+          recentActivity: [
+            {
+              type: 'lesson',
+              course: {
+                title: 'Mathematics: Algebra and Functions',
+                subject: 'mathematics',
+              },
+              lesson: {
+                title: 'Quadratic Equations',
+              },
+            },
+            {
+              type: 'quiz',
+              course: {
+                title: 'Science: Biology Fundamentals',
+                subject: 'science',
+              },
+            },
+          ],
+          enrolledCourses: [
+            {
+              id: '1',
+              title: 'Mathematics: Algebra and Functions',
+              subject: 'mathematics',
+              enrollment: {
+                progress: 85,
+              },
+            },
+            {
+              id: '2',
+              title: 'Science: Biology Fundamentals',
+              subject: 'science',
+              enrollment: {
+                progress: 45,
+              },
+            },
+            {
+              id: '3',
+              title: 'English Literature: Shakespeare and Poetry',
+              subject: 'english',
+              enrollment: {
+                progress: 76,
+              },
+            },
+          ],
+        };
+
+        setStats(demoStats);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Fallback data while loading or if error occurs
+  const getProgressPercentage = (subject?: string) => {
+    if (!stats?.enrolledCourses) return 0;
+
+    if (subject) {
+      const course = stats.enrolledCourses.find(c => c.subject === subject);
+      return course?.enrollment.progress || 0;
+    }
+
+    // Overall progress
+    return Math.round(
+      stats.enrolledCourses.reduce((sum, course) => sum + course.enrollment.progress, 0) /
+      stats.enrolledCourses.length
+    );
+  };
+
+  const formatStudyTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ''}` : `${mins}m`;
+  };
+
+  const activeTopics = stats?.enrolledCourses.length || 3;
+  const studyTime = stats?.progress.totalStudyTime || 270;
+  const mathProgress = getProgressPercentage('mathematics');
+  const scienceProgress = getProgressPercentage('science');
+  const englishProgress = getProgressPercentage('english');
   return (
     <section className="py-24 relative">
       <div className="container mx-auto">
@@ -55,10 +192,10 @@ const ShowcaseCards = () => {
                   <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm font-medium">Mathematics Quiz</span>
-                      <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">85%</span>
+                      <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">{mathProgress}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
+                      <div className="bg-green-500 h-2 rounded-full" style={{width: `${mathProgress}%`}}></div>
                     </div>
                   </div>
 
@@ -68,7 +205,7 @@ const ShowcaseCards = () => {
                       <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">In Progress</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-orange-500 h-2 rounded-full" style={{width: '45%'}}></div>
+                      <div className="bg-orange-500 h-2 rounded-full" style={{width: `${scienceProgress}%`}}></div>
                     </div>
                   </div>
                 </div>
@@ -110,11 +247,11 @@ const ShowcaseCards = () => {
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
-                    <div className="text-2xl font-bold text-blue-600">12</div>
+                    <div className="text-2xl font-bold text-blue-600">{activeTopics}</div>
                     <div className="text-xs text-gray-600">Active Topics</div>
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-gray-200 text-center">
-                    <div className="text-2xl font-bold text-green-600">4.5h</div>
+                    <div className="text-2xl font-bold text-green-600">{formatStudyTime(studyTime)}</div>
                     <div className="text-xs text-gray-600">Study Time</div>
                   </div>
                 </div>
@@ -166,21 +303,21 @@ const ShowcaseCards = () => {
                 <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">Overall Progress</span>
-                    <span className="text-lg font-bold text-purple-600">78%</span>
+                    <span className="text-lg font-bold text-purple-600">{getProgressPercentage()}%</span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
                       <div className="text-lg font-bold text-green-600">Math</div>
-                      <div className="text-xs text-gray-600">85%</div>
+                      <div className="text-xs text-gray-600">{mathProgress}%</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-blue-600">Science</div>
-                      <div className="text-xs text-gray-600">72%</div>
+                      <div className="text-xs text-gray-600">{scienceProgress}%</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-orange-600">English</div>
-                      <div className="text-xs text-gray-600">76%</div>
+                      <div className="text-xs text-gray-600">{englishProgress}%</div>
                     </div>
                   </div>
                 </div>
@@ -190,11 +327,11 @@ const ShowcaseCards = () => {
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <span className="text-lg mr-2">🏆</span>
-                      <span className="text-sm">Completed 10 quizzes this week</span>
+                      <span className="text-sm">{stats?.recentActivity.length || 2} activities completed this week</span>
                     </div>
                     <div className="flex items-center">
                       <span className="text-lg mr-2">🎯</span>
-                      <span className="text-sm">5-day study streak</span>
+                      <span className="text-sm">{stats?.progress.currentStreak || 5}-day study streak</span>
                     </div>
                   </div>
                 </div>

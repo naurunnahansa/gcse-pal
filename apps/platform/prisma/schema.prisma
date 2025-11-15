@@ -78,9 +78,11 @@ model Course {
   tasks       Task[]
   bookmarks   Bookmark[]
   studySessions StudySession[]
-    favorites   UserFavorite[]
+  favorites   UserFavorite[]
+  flashCards  FlashCard[]
   tags        CourseTag[]
   studyGroups StudyGroup[]
+  evaluationStats EvaluationStats[]
 
   @@map("courses")
 }
@@ -132,6 +134,8 @@ model Chapter {
   notes    Note[]
   tasks    Task[]
   bookmarks Bookmark[]
+  flashCards FlashCard[]
+  evaluationStats EvaluationStats[]
 
   @@map("chapters")
 }
@@ -144,13 +148,19 @@ model Lesson {
   description  String
   content      String?  // Rich text content
   videoUrl     String?
-  videoDuration Int?     // in seconds
+  videoDuration Int?     // in milliseconds
   markdownPath String?  // Path to markdown file
   hasVideo     Boolean  @default(false)
   hasMarkdown  Boolean  @default(false)
   order        Int
   duration     Int      // in minutes
   isPublished  Boolean  @default(false)
+
+  // Mux video fields
+  muxAssetId   String?  @db.Text
+  muxUploadId  String?  @db.Text
+  muxStatus    String?  @default("none") // none, preparing, processing, ready, error
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -563,4 +573,78 @@ enum MessageType {
   text
   file
   link
+}
+
+// FlashCard model - Interactive flash cards for study
+model FlashCard {
+  id          String   @id @default(cuid())
+  courseId    String?
+  chapterId   String?
+  front       String   // Question/prompt
+  back        String   // Answer/explanation
+  category    String   // Topic category
+  difficulty  Difficulty @default(beginner)
+  tags        String[] // Additional tags
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  course  Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  reviews FlashCardReview[]
+
+  @@map("flash_cards")
+}
+
+// FlashCardReview model - Tracks user reviews of flash cards
+model FlashCardReview {
+  id         String            @id @default(cuid())
+  userId     String
+  flashCardId String
+  quality    ReviewQuality     // spaced repetition quality (0-5)
+  easeFactor Float             @default(2.5)
+  interval   Int               @default(1) // days until next review
+  repetitions Int              @default(0)
+  reviewedAt DateTime          @default(now())
+  nextReview DateTime
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashCard FlashCard @relation(fields: [flashCardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, flashCardId])
+  @@map("flash_card_reviews")
+}
+
+enum ReviewQuality {
+  again      // 0 - completely forgot
+  hard       // 1 - barely remembered
+  good       // 3 - recalled with effort
+  easy       // 5 - recalled easily
+}
+
+// EvaluationStats model - Overall evaluation statistics
+model EvaluationStats {
+  id           String   @id @default(cuid())
+  userId       String
+  courseId     String?
+  chapterId    String?
+  totalQuestions     Int @default(0)
+  correctAnswers    Int @default(0)
+  totalTimeSpent    Int @default(0) // in minutes
+  averageScore       Float @default(0)
+  bestScore          Float @default(0)
+  lastStudiedAt      DateTime @default(now())
+  streakDays         Int @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course  Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, chapterId])
+  @@map("evaluation_stats")
 }

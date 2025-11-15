@@ -67,12 +67,10 @@ export async function GET(
     }
 
     // Get user progress for this lesson
-    const progress = await prisma.progress.findUnique({
+    const progress = await prisma.progress.findFirst({
       where: {
-        userId_lessonId: {
-          userId: user.id,
-          lessonId: lesson.id,
-        },
+        userId: user.id,
+        lessonId: lesson.id,
       },
     });
 
@@ -187,19 +185,24 @@ export async function POST(
       );
     }
 
+    // Check if progress record already exists
+    const existingProgress = await prisma.progress.findFirst({
+      where: {
+        userId: user.id,
+        lessonId: lesson.id,
+      },
+    });
+
     // Create or update progress
     const progress = await prisma.progress.upsert({
       where: {
-        userId_lessonId: {
-          userId: user.id,
-          lessonId: lesson.id,
-        },
+        id: existingProgress?.id || '',
       },
       update: {
         status: status || 'in_progress',
         timeSpent: timeSpent || 0,
         score: score,
-        startedAt: status === 'completed' ? progress?.startedAt : new Date(),
+        startedAt: status === 'completed' && !existingProgress?.startedAt ? new Date() : existingProgress?.startedAt,
         completedAt: status === 'completed' ? new Date() : null,
         lastAccessed: new Date(),
       },

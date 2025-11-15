@@ -68,6 +68,27 @@ export async function ensureUserExists(): Promise<ClerkUser> {
 }
 
 /**
+ * Check if user has required role
+ */
+export async function hasUserRole(clerkUserId: string, requiredRoles: string[]) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { clerkId: clerkUserId },
+      select: { role: true }
+    });
+
+    if (!user) {
+      return false;
+    }
+
+    return requiredRoles.includes(user.role);
+  } catch (error) {
+    console.error('Error checking user role:', error);
+    return false;
+  }
+}
+
+/**
  * Gets user info from Clerk and our database
  */
 export async function getCurrentUser(): Promise<ClerkUser> {
