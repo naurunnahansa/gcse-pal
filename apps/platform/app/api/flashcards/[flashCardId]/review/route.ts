@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  courses,
+  chapters,
+  flashCards,
+  flashCardReviews,
+  evaluationStats,
+  enrollments,
+  findUserByClerkId,
+  findEnrollment
+} from '@/lib/db/queries';
+import { eq, and } from 'drizzle-orm';
 
 // POST /api/flashcards/[flashCardId]/review - Record flash card review
 export async function POST(
@@ -21,9 +33,7 @@ export async function POST(
     const { quality } = body;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await findUserByClerkId(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -33,33 +43,30 @@ export async function POST(
     }
 
     // Get flash card
-    const flashCard = await prisma.flashCard.findUnique({
-      where: { id: flashCardId },
-      include: {
-        chapter: {
-          include: {
-            course: true
-          }
-        }
-      }
-    });
+    const flashCardResult = await db.select({
+      id: flashCards.id,
+      courseId: flashCards.courseId,
+      chapterId: flashCards.chapterId,
+      front: flashCards.front,
+      back: flashCards.back,
+      tags: flashCards.tags,
+      difficulty: flashCards.difficulty,
+    })
+      .from(flashCards)
+      .where(eq(flashCards.id, flashCardId))
+      .limit(1);
 
-    if (!flashCard) {
+    if (flashCardResult.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Flash card not found' },
         { status: 404 }
       );
     }
 
+    const flashCard = flashCardResult[0];
+
     // Check if user is enrolled in the course
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: flashCard.chapter?.courseId || flashCard.courseId!,
-        },
-      },
-    });
+    const enrollment = await findEnrollment(user.id, flashCard.courseId!);
 
     if (!enrollment) {
       return NextResponse.json(
@@ -78,14 +85,15 @@ export async function POST(
     }
 
     // Get existing review
-    const existingReview = await prisma.flashCardReview.findUnique({
-      where: {
-        userId_flashCardId: {
-          userId: user.id,
-          flashCardId: flashCardId
-        }
-      }
-    });
+    const existingReviewResult = await db.select()
+      .from(flashCardReviews)
+      .where(and(
+        eq(flashCardReviews.userId, user.id),
+        eq(flashCardReviews.flashCardId, flashCardId)
+      ))
+      .limit(1);
+
+    const existingReview = existingReviewResult[0] || null;
 
     // Calculate new values using SM-2 algorithm
     let newEaseFactor, newInterval, newRepetitions, nextReviewDate;
@@ -115,22 +123,19 @@ export async function POST(
       nextReviewDate.setDate(nextReviewDate.getDate() + newInterval);
 
       // Update existing review
-      await prisma.flashCardReview.update({
-        where: {
-          userId_flashCardId: {
-            userId: user.id,
-            flashCardId: flashCardId
-          }
-        },
-        data: {
+      await db.update(flashCardReviews)
+        .set({
           quality: quality as any,
           easeFactor: newEaseFactor,
           interval: newInterval,
           repetitions: newRepetitions,
           reviewedAt: new Date(),
           nextReview: nextReviewDate
-        }
-      });
+        })
+        .where(and(
+          eq(flashCardReviews.userId, user.id),
+          eq(flashCardReviews.flashCardId, flashCardId)
+        ));
     } else {
       // Create new review
       newRepetitions = quality === 'again' ? 0 : 1;
@@ -146,8 +151,8 @@ export async function POST(
       nextReviewDate = new Date();
       nextReviewDate.setDate(nextReviewDate.getDate() + newInterval);
 
-      await prisma.flashCardReview.create({
-        data: {
+      await db.insert(flashCardReviews)
+        .values({
           userId: user.id,
           flashCardId: flashCardId,
           quality: quality as any,
@@ -156,27 +161,35 @@ export async function POST(
           repetitions: newRepetitions,
           reviewedAt: new Date(),
           nextReview: nextReviewDate
-        }
-      });
+        });
     }
 
     // Update evaluation stats
-    await prisma.evaluationStats.upsert({
-      where: {
-        userId_courseId: {
+    const existingStatsResult = await db.select()
+      .from(evaluationStats)
+      .where(and(
+        eq(evaluationStats.userId, user.id),
+        eq(evaluationStats.courseId, flashCard.courseId!)
+      ))
+      .limit(1);
+
+    if (existingStatsResult.length > 0) {
+      await db.update(evaluationStats)
+        .set({
+          lastStudiedAt: new Date()
+        })
+        .where(and(
+          eq(evaluationStats.userId, user.id),
+          eq(evaluationStats.courseId, flashCard.courseId!)
+        ));
+    } else {
+      await db.insert(evaluationStats)
+        .values({
           userId: user.id,
-          courseId: flashCard.chapter?.courseId || flashCard.courseId!
-        }
-      },
-      update: {
-        lastStudiedAt: new Date()
-      },
-      create: {
-        userId: user.id,
-        courseId: flashCard.chapter?.courseId || flashCard.courseId!,
-        lastStudiedAt: new Date()
-      }
-    });
+          courseId: flashCard.courseId!,
+          lastStudiedAt: new Date()
+        });
+    }
 
     return NextResponse.json({
       success: true,

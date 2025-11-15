@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  courses,
+  enrollments,
+  findUserByClerkId,
+  findCourseById,
+  findEnrollment,
+  createEnrollment
+} from '@/lib/db/queries';
+import { eq, and, sql } from 'drizzle-orm';
 
 // POST /api/courses/[courseId]/enroll - Enroll user in course
 export async function POST(
@@ -19,9 +29,7 @@ export async function POST(
     const { courseId } = await params;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await findUserByClerkId(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -31,9 +39,7 @@ export async function POST(
     }
 
     // Get course
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-    });
+    const course = await findCourseById(courseId);
 
     if (!course) {
       return NextResponse.json(
@@ -51,14 +57,7 @@ export async function POST(
     }
 
     // Check if already enrolled
-    const existingEnrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    const existingEnrollment = await findEnrollment(user.id, courseId);
 
     if (existingEnrollment) {
       return NextResponse.json(
@@ -68,23 +67,18 @@ export async function POST(
     }
 
     // Create enrollment
-    const enrollment = await prisma.enrollment.create({
-      data: {
-        userId: user.id,
-        courseId: courseId,
-        status: 'active',
-      },
+    const enrollment = await createEnrollment({
+      userId: user.id,
+      courseId: courseId,
+      status: 'active',
     });
 
     // Update course enrollment count
-    await prisma.course.update({
-      where: { id: courseId },
-      data: {
-        enrollmentCount: {
-          increment: 1,
-        },
-      },
-    });
+    await db.update(courses)
+      .set({
+        enrollmentCount: sql`${courses.enrollmentCount} + 1`,
+      })
+      .where(eq(courses.id, courseId));
 
     return NextResponse.json({
       success: true,
@@ -120,9 +114,7 @@ export async function DELETE(
     const { courseId } = await params;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await findUserByClerkId(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -131,15 +123,8 @@ export async function DELETE(
       );
     }
 
-    // Find and delete enrollment
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    // Find enrollment
+    const enrollment = await findEnrollment(user.id, courseId);
 
     if (!enrollment) {
       return NextResponse.json(
@@ -148,24 +133,19 @@ export async function DELETE(
       );
     }
 
-    await prisma.enrollment.delete({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    // Delete enrollment
+    await db.delete(enrollments)
+      .where(and(
+        eq(enrollments.userId, user.id),
+        eq(enrollments.courseId, courseId)
+      ));
 
     // Update course enrollment count
-    await prisma.course.update({
-      where: { id: courseId },
-      data: {
-        enrollmentCount: {
-          decrement: 1,
-        },
-      },
-    });
+    await db.update(courses)
+      .set({
+        enrollmentCount: sql`${courses.enrollmentCount} - 1`,
+      })
+      .where(eq(courses.id, courseId));
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { db, courses } from '@/lib/db/queries';
+import { eq, or, ilike, desc } from 'drizzle-orm';
 
 // GET /api/courses/slug/[slug] - Resolve course slug to ID
 export async function GET(
@@ -30,39 +31,28 @@ export async function GET(
     }
 
     // If not found in mappings, try to find by title or subject
-    const courses = await prisma.course.findMany({
-      where: {
-        OR: [
-          {
-            title: {
-              contains: slug,
-              mode: 'insensitive'
-            }
-          },
-          {
-            subject: {
-              contains: slug,
-              mode: 'insensitive'
-            }
-          }
-        ],
-        status: 'published'
-      },
-      select: {
-        id: true,
-        title: true,
-        subject: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 1
-    });
+    const foundCourses = await db.select({
+      id: courses.id,
+      title: courses.title,
+      subject: courses.subject,
+    })
+      .from(courses)
+      .where(and(
+        eq(courses.status, 'published'),
+        or(
+          ilike(courses.title, `%${slug}%`),
+          ilike(courses.subject, `%${slug}%`)
+        )
+      ))
+      .orderBy(desc(courses.createdAt))
+      .limit(1);
 
-    if (courses.length > 0) {
+    if (foundCourses.length > 0) {
       return NextResponse.json({
         success: true,
         data: {
-          courseId: courses[0].id,
-          course: courses[0]
+          courseId: foundCourses[0].id,
+          course: foundCourses[0]
         }
       });
     }
