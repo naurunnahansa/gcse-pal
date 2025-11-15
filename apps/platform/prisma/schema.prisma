@@ -36,6 +36,8 @@ model User {
   userSettings    UserSettings?
     favorites       UserFavorite[]
   quizAttempts    QuizAttempt[]
+  flashCardReviews FlashCardReview[]
+  evaluationStats  EvaluationStats[]
   studyGroups     StudyGroup[]      // Groups created by user
   groupMessages   StudyGroupMessage[]
   groupMembership StudyGroupMember[]

@@ -92,6 +92,7 @@ const CourseEvaluatePage = () => {
     setMounted(true);
     if (courseId) {
       fetchCourse();
+      fetchEvaluationData();
     }
   }, [courseId, isAuthenticated]);
 
@@ -116,6 +117,8 @@ const CourseEvaluatePage = () => {
     }
   }, [course?.id, isEnrolledFromClient]);
 
+  const [evaluationData, setEvaluationData] = useState<any>(null);
+
   const fetchCourse = async () => {
     try {
       setLoading(true);
@@ -136,6 +139,25 @@ const CourseEvaluatePage = () => {
       router.push('/learning/courses/browse');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEvaluationData = async () => {
+    try {
+      const response = await fetch(`/api/courses/${courseId}/evaluations`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch evaluation data');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setEvaluationData(result.data);
+      } else {
+        throw new Error(result.error || 'Failed to load evaluation data');
+      }
+    } catch (error) {
+      console.error('Error fetching evaluation data:', error);
+      // Don't show error toast for evaluation data as it's not critical
     }
   };
 
@@ -235,7 +257,9 @@ const CourseEvaluatePage = () => {
                   <Target className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">12</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {evaluationData?.overallStats?.totalQuestions || 0}
+                  </p>
                   <p className="text-sm text-gray-600">Total Questions</p>
                 </div>
               </div>
@@ -249,8 +273,10 @@ const CourseEvaluatePage = () => {
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">8</p>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {evaluationData?.overallStats?.correctAnswers || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">Correct</p>
                 </div>
               </div>
             </CardContent>
@@ -263,7 +289,9 @@ const CourseEvaluatePage = () => {
                   <BarChart3 className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">75%</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {Math.round(evaluationData?.overallStats?.averageScore || 0)}%
+                  </p>
                   <p className="text-sm text-gray-600">Average Score</p>
                 </div>
               </div>
@@ -277,8 +305,10 @@ const CourseEvaluatePage = () => {
                   <TrendingUp className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">+15%</p>
-                  <p className="text-sm text-gray-600">Improvement</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {evaluationData?.overallStats?.totalQuizAttempts || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">Attempts</p>
                 </div>
               </div>
             </CardContent>
@@ -389,52 +419,68 @@ const CourseEvaluatePage = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {course.chapters.map((chapter, index) => (
-                <div key={chapter.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-1">Chapter {index + 1}: {chapter.title}</h4>
-                      <p className="text-sm text-gray-600">
-                        {chapter.lessons.length} lessons • {Math.round(chapter.totalDuration / 60)}h
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-gray-900">0%</div>
-                      <div className="text-xs text-gray-500">Complete</div>
-                    </div>
-                  </div>
+              {evaluationData?.chapterStats?.map((chapter: any, index: number) => {
+                const completionPercentage = chapter.totalQuestions > 0
+                  ? Math.round((chapter.correctAnswers / chapter.totalQuestions) * 100)
+                  : 0;
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium">0/3 completed</span>
+                return (
+                  <div key={chapter.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-1">Chapter {index + 1}: {chapter.title}</h4>
+                        <p className="text-sm text-gray-600">
+                          {chapter.lessonsCount || 0} lessons • {chapter.quizzesCount || 0} quizzes • {chapter.totalFlashCards || 0} flash cards
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-gray-900">{completionPercentage}%</div>
+                        <div className="text-xs text-gray-500">Complete</div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '0%' }}></div>
-                    </div>
-                  </div>
 
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push(`/learning/${courseId}/evaluate/flashcards?chapter=${chapter.id}`)}
-                      className="flex-1"
-                    >
-                      <Lightbulb className="h-4 w-4 mr-1" />
-                      Flash Cards
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => router.push(`/learning/${courseId}/evaluate/questions?chapter=${chapter.id}`)}
-                      className="flex-1"
-                    >
-                      <FileQuestion className="h-4 w-4 mr-1" />
-                      Questions
-                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Progress</span>
+                        <span className="font-medium">{chapter.correctAnswers}/{chapter.totalQuestions} correct</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${completionPercentage}%` }}
+                        ></div>
+                      </div>
+                      {chapter.averageScore > 0 && (
+                        <div className="text-xs text-gray-500">
+                          Average Score: {Math.round(chapter.averageScore)}%
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/learning/${courseId}/evaluate/flashcards?chapter=${chapter.id}`)}
+                        className="flex-1"
+                        disabled={chapter.totalFlashCards === 0}
+                      >
+                        <Lightbulb className="h-4 w-4 mr-1" />
+                        Flash Cards ({chapter.totalFlashCards})
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/learning/${courseId}/evaluate/questions?chapter=${chapter.id}`)}
+                        className="flex-1"
+                        disabled={chapter.totalQuestions === 0}
+                      >
+                        <FileQuestion className="h-4 w-4 mr-1" />
+                        Questions ({chapter.totalQuestions})
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
