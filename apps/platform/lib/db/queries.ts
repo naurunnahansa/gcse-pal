@@ -2,6 +2,10 @@ import { db } from './index';
 import { eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte } from 'drizzle-orm';
 import * as schema from './schema';
 
+// Re-export db for convenience
+export { db };
+// Re-export schema for convenience
+
 // Re-export schema for convenience
 export {
   users,

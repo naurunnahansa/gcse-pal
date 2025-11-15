@@ -37,9 +37,7 @@ export async function GET(
     const includeAnswered = searchParams.get('includeAnswered') === 'true';
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await findUserByClerkId(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -49,14 +47,7 @@ export async function GET(
     }
 
     // Check if user is enrolled in the course
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    const enrollment = await findEnrollment(user.id, courseId);
 
     if (!enrollment) {
       return NextResponse.json(
@@ -83,7 +74,7 @@ export async function GET(
     }
 
     // Get quizzes with questions
-    const quizzes = await prisma.quiz.findMany({
+    const quizzes = await db.quiz.findMany({
       where: whereClause,
       include: {
         chapter: {
@@ -152,7 +143,7 @@ export async function GET(
         let isCorrect = false;
 
         if (mostRecentAttempt) {
-          const answer = await prisma.quizAnswer.findFirst({
+          const answer = await db.quizAnswer.findFirst({
             where: {
               attemptId: mostRecentAttempt.id,
               questionId: question.id
@@ -249,9 +240,7 @@ export async function POST(
     const { quizId, answers, timeSpent } = body;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await findUserByClerkId(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -261,14 +250,7 @@ export async function POST(
     }
 
     // Check if user is enrolled in the course
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    const enrollment = await findEnrollment(user.id, courseId);
 
     if (!enrollment) {
       return NextResponse.json(
@@ -278,7 +260,7 @@ export async function POST(
     }
 
     // Get quiz
-    const quiz = await prisma.quiz.findUnique({
+    const quiz = await db.quiz.findUnique({
       where: { id: quizId },
       include: {
         questions: true
@@ -293,7 +275,7 @@ export async function POST(
     }
 
     // Calculate attempt number
-    const existingAttempts = await prisma.quizAttempt.count({
+    const existingAttempts = await db.quizAttempt.count({
       where: {
         userId: user.id,
         quizId: quizId
@@ -336,7 +318,7 @@ export async function POST(
     const passed = score >= quiz.passingScore;
 
     // Create quiz attempt
-    const attempt = await prisma.quizAttempt.create({
+    const attempt = await db.quizAttempt.create({
       data: {
         userId: user.id,
         quizId: quizId,
@@ -349,7 +331,7 @@ export async function POST(
     });
 
     // Create quiz answers
-    await prisma.quizAnswer.createMany({
+    await db.quizAnswer.createMany({
       data: quizAnswers.map(answer => ({
         attemptId: attempt.id,
         questionId: answer.questionId,
@@ -360,7 +342,7 @@ export async function POST(
     });
 
     // Update evaluation stats
-    await prisma.evaluationStats.upsert({
+    await db.evaluationStats.upsert({
       where: {
         userId_courseId: {
           userId: user.id,
@@ -372,7 +354,7 @@ export async function POST(
         correctAnswers: { increment: correctCount },
         totalTimeSpent: { increment: timeSpent },
         averageScore: score,
-        bestScore: Math.max(score, await prisma.evaluationStats.findUnique({
+        bestScore: Math.max(score, await db.evaluationStats.findUnique({
           where: { userId_courseId: { userId: user.id, courseId } }
         }).then(stats => stats?.bestScore || 0)),
         lastStudiedAt: new Date()

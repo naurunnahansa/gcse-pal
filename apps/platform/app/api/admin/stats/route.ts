@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  courses,
+  enrollments,
+  studySessions,
+  chapters,
+  userSettings
+} from '@/lib/db/queries';
 import { hasUserRole } from '@/lib/user-sync';
+import { eq, and, gte, lte, count, sum, avg, desc, inArray } from 'drizzle-orm';
 
 // GET /api/admin/stats - Get admin dashboard statistics
 export async function GET(req: NextRequest) {
@@ -30,164 +39,181 @@ export async function GET(req: NextRequest) {
       publishedCourses,
       totalEnrollments,
       recentEnrollments,
-      activeCourses,
+      activeCoursesData,
       courseStats,
       userProgress
     ] = await Promise.all([
       // Total students
-      prisma.user.count({
-        where: { role: 'student' }
-      }),
+      db.select({ count: count() })
+        .from(users)
+        .where(eq(users.role, 'student'))
+        .then(result => result[0]?.count || 0),
 
       // Total courses (all statuses)
-      prisma.course.count(),
+      db.select({ count: count() })
+        .from(courses)
+        .then(result => result[0]?.count || 0),
 
       // Published courses
-      prisma.course.count({
-        where: { status: 'published' }
-      }),
+      db.select({ count: count() })
+        .from(courses)
+        .where(eq(courses.status, 'published'))
+        .then(result => result[0]?.count || 0),
 
       // Total enrollments
-      prisma.enrollment.count(),
+      db.select({ count: count() })
+        .from(enrollments)
+        .then(result => result[0]?.count || 0),
 
       // Recent enrollments (last 7 days)
-      prisma.enrollment.count({
-        where: {
-          enrolledAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        }
-      }),
+      db.select({ count: count() })
+        .from(enrollments)
+        .where(gte(enrollments.enrolledAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)))
+        .then(result => result[0]?.count || 0),
 
       // Active courses (courses with enrollments in last 30 days)
-      prisma.enrollment.findMany({
-        where: {
-          lastActivityAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          }
-        },
-        select: { courseId: true },
-        distinct: ['courseId']
-      }).then(enrollments => enrollments.length),
+      db.select({ courseId: enrollments.courseId })
+        .from(enrollments)
+        .where(gte(enrollments.lastActivityAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
+        .then(enrollments => new Set(enrollments.map(e => e.courseId)).size),
 
       // Course statistics
-      prisma.course.findMany({
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          subject: true,
-          difficulty: true,
-          status: true,
-          instructor: true,
-          createdAt: true,
-          duration: true,
-          thumbnail: true,
-          level: true,
-          enrollmentCount: true,
-          rating: true,
-          _count: {
-            select: {
-              chapters: {
-                where: { isPublished: true }
-              },
-              enrollments: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10
-      }),
+      db.select({
+        id: courses.id,
+        title: courses.title,
+        description: courses.description,
+        subject: courses.subject,
+        difficulty: courses.difficulty,
+        status: courses.status,
+        instructor: courses.instructor,
+        createdAt: courses.createdAt,
+        duration: courses.duration,
+        thumbnail: courses.thumbnail,
+        level: courses.level,
+        enrollmentCount: courses.enrollmentCount,
+        rating: courses.rating,
+      })
+        .from(courses)
+        .orderBy(desc(courses.createdAt))
+        .limit(10),
 
       // User progress data
-      prisma.enrollment.groupBy({
-        by: ['status'],
-        _count: true
-      }),
+      db.select({ status: enrollments.status })
+        .from(enrollments),
 
       // Study session data for engagement metrics
-      prisma.studySession.aggregate({
-        _count: true,
-        _sum: { duration: true },
-        where: {
-          startTime: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          }
-        }
-      })
+      db.select({ total: sum(studySessions.duration), count: count() })
+        .from(studySessions)
+        .where(gte(studySessions.startTime, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
+        .then(result => result[0] || { total: 0, count: 0 })
     ]);
 
     // Calculate additional metrics
-    const totalStudents = await prisma.user.count({
-      where: { role: 'student' }
-    });
+    const totalStudents = await db.select({ count: count() })
+      .from(users)
+      .where(eq(users.role, 'student'))
+      .then(result => result[0]?.count || 0);
 
-    const totalTeachers = await prisma.user.count({
-      where: { role: 'teacher' }
-    });
+    const totalTeachers = await db.select({ count: count() })
+      .from(users)
+      .where(eq(users.role, 'teacher'))
+      .then(result => result[0]?.count || 0);
 
-    const avgCompletionRate = await prisma.enrollment.aggregate({
-      _avg: { progress: true }
-    });
+    const avgCompletionRate = await db.select({ average: avg(enrollments.progress) })
+      .from(enrollments)
+      .then(result => result[0]?.average || 0);
 
     // Get recent students with their enrollment data
-    const recentStudents = await prisma.user.findMany({
-      where: { role: 'student' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        createdAt: true,
-        enrollments: {
-          select: {
-            progress: true,
-            enrolledAt: true,
-            lastActivityAt: true,
-            course: {
-              select: {
-                title: true
-              }
-            }
-          },
-          orderBy: { enrolledAt: 'desc' },
-          take: 1
-          }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    });
+    const recentStudentsData = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatar: users.avatar,
+      createdAt: users.createdAt,
+    })
+      .from(users)
+      .where(eq(users.role, 'student'))
+      .orderBy(desc(users.createdAt))
+      .limit(10);
 
-    // Format the student data for the frontend
-    const formattedStudents = recentStudents.map(student => ({
-      id: student.id,
-      name: student.name,
-      email: student.email,
-      enrolled: student.enrollments.length,
-      progress: student.enrollments[0]?.progress || 0,
-      lastActive: student.enrollments[0]?.lastActivityAt
-        ? formatLastActive(student.enrollments[0].lastActivityAt)
-        : 'Never'
-    }));
+    // Get enrollment data for these students
+    const formattedStudents = await Promise.all(
+      recentStudentsData.map(async (student) => {
+        const studentEnrollments = await db.select({
+          progress: enrollments.progress,
+          enrolledAt: enrollments.enrolledAt,
+          lastActivityAt: enrollments.lastActivityAt,
+          courseTitle: courses.title,
+        })
+          .from(enrollments)
+          .leftJoin(courses, eq(enrollments.courseId, courses.id))
+          .where(eq(enrollments.userId, student.id))
+          .orderBy(desc(enrollments.enrolledAt))
+          .limit(1);
+
+        const enrollment = studentEnrollments[0];
+        return {
+          id: student.id,
+          name: student.name,
+          email: student.email,
+          enrolled: studentEnrollments.length,
+          progress: enrollment?.progress || 0,
+          lastActive: enrollment?.lastActivityAt
+            ? formatLastActive(enrollment.lastActivityAt)
+            : 'Never'
+        };
+      })
+    );
+
+    // Get chapter counts for courses
+    const courseIds = courseStats.map(course => course.id);
+    const chapterCounts = courseIds.length > 0
+      ? await db.select({
+          courseId: chapters.courseId,
+          count: count(),
+        })
+        .from(chapters)
+        .where(and(
+          inArray(chapters.courseId, courseIds),
+          eq(chapters.isPublished, true)
+        ))
+        .groupBy(chapters.courseId)
+      : [];
+
+    // Get enrollment counts for courses
+    const enrollmentCounts = courseIds.length > 0
+      ? await db.select({
+          courseId: enrollments.courseId,
+          count: count(),
+        })
+        .from(enrollments)
+        .where(inArray(enrollments.courseId, courseIds))
+        .groupBy(enrollments.courseId)
+      : [];
 
     // Format course data
-    const formattedCourses = courseStats.map(course => ({
-      id: course.id,
-      title: course.title,
-      description: course.description,
-      subject: course.subject,
-      difficulty: course.difficulty,
-      status: course.status,
-      students: course._count.enrollments,
-      avgScore: course.rating || 0,
-      completion: Math.round(Math.random() * 100), // TODO: Calculate actual completion rate
-      author: course.instructor,
-      createdAt: course.createdAt.toISOString().split('T')[0],
-      duration: course.duration,
-      thumbnail: course.thumbnail,
-      level: course.level,
-      chaptersCount: course._count.chapters
-    }));
+    const formattedCourses = courseStats.map(course => {
+      const chapterCount = chapterCounts.find(cc => cc.courseId === course.id)?.count || 0;
+      const enrollmentCount = enrollmentCounts.find(ec => ec.courseId === course.id)?.count || 0;
+
+      return {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        subject: course.subject,
+        difficulty: course.difficulty,
+        status: course.status,
+        students: enrollmentCount,
+        avgScore: course.rating || 0,
+        completion: Math.round(Math.random() * 100), // TODO: Calculate actual completion rate
+        author: course.instructor,
+        createdAt: course.createdAt.toISOString().split('T')[0],
+        duration: course.duration,
+        thumbnail: course.thumbnail,
+        level: course.level,
+        chaptersCount: chapterCount
+      };
+    });
 
     // Platform statistics
     const platformStats = [
@@ -232,10 +258,10 @@ export async function GET(req: NextRequest) {
           totalCourses,
           publishedCourses,
           totalEnrollments,
-          activeCourses,
+          activeCourses: activeCoursesData,
           recentEnrollments,
-          avgCompletionRate: Math.round(avgCompletionRate._avg.progress || 0),
-          totalStudyTime: userProgress._sum.duration || 0
+          avgCompletionRate: Math.round(avgCompletionRate),
+          totalStudyTime: userProgress.total || 0
         }
       }
     });

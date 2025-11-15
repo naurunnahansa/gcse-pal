@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  courses,
+  flashCards,
+  enrollments
+} from '@/lib/db/queries';
+import { eq, and, ilike } from 'drizzle-orm';
 
 // GET /api/courses/[courseId]/flashcards - Get flash cards for a course
 export async function GET(
@@ -24,9 +31,12 @@ export async function GET(
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const userResults = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
+
+    const user = userResults[0];
 
     if (!user) {
       return NextResponse.json(
@@ -36,14 +46,15 @@ export async function GET(
     }
 
     // Check if user is enrolled in the course
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: user.id,
-          courseId: courseId,
-        },
-      },
-    });
+    const enrollmentResults = await db.select()
+      .from(enrollments)
+      .where(and(
+        eq(enrollments.userId, user.id),
+        eq(enrollments.courseId, courseId)
+      ))
+      .limit(1);
+
+    const enrollment = enrollmentResults[0];
 
     if (!enrollment) {
       return NextResponse.json(

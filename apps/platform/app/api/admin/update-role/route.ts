@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import { db, users } from '@/lib/db/queries';
+import { eq } from 'drizzle-orm';
 
 // Admin only endpoint to update user roles
 export async function POST(req: NextRequest) {
@@ -14,9 +15,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if current user is already admin (temporarily allow first admin setup)
-    const currentUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const currentUserResults = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
+
+    const currentUser = currentUserResults[0];
 
     // For security, you might want to check if the current user is already admin
     // or implement a different authorization strategy
@@ -44,10 +48,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Update user role by email
-    const updatedUser = await prisma.user.update({
-      where: { email: email },
-      data: { role: role },
-    });
+    const updatedUsers = await db.update(users)
+      .set({
+        role: role,
+        updatedAt: new Date()
+      })
+      .where(eq(users.email, email))
+      .returning();
+
+    const updatedUser = updatedUsers[0];
 
     return NextResponse.json({
       success: true,
