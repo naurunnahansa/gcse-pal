@@ -13,11 +13,29 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { messages }: { messages: UIMessage[] } = await req.json();
+    const { messages, model, webSearch }: {
+      messages: UIMessage[];
+      model?: string;
+      webSearch?: boolean;
+    } = await req.json();
+
+    // Select the appropriate Claude model
+    let selectedModel;
+    switch (model) {
+      case 'anthropic/claude-3-sonnet-20240229':
+        selectedModel = anthropic("claude-3-sonnet-20240229");
+        break;
+      case 'anthropic/claude-3-haiku-20240307':
+      default:
+        selectedModel = anthropic("claude-3-haiku-20240307");
+        break;
+    }
+
+    const systemPrompt = `You are a helpful GCSE study assistant. Help students with their learning and answer questions about various subjects including Mathematics, English, Science, History, and Geography. Be clear, accurate, and educational in your responses.`;
 
     const result = streamText({
-      model: anthropic("claude-3-haiku-20240307"),
-      system: `You are a helpful GCSE study assistant. Help students with their learning and answer questions about various subjects including Mathematics, English, Science, History, and Geography.`,
+      model: selectedModel,
+      system: systemPrompt,
       messages: messages as any[],
     });
 

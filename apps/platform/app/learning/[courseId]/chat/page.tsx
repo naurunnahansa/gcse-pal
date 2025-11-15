@@ -108,12 +108,12 @@ interface CourseData {
 
 const models = [
   {
-    name: 'GPT 4o',
-    value: 'openai/gpt-4o',
+    name: 'Claude 3 Haiku',
+    value: 'anthropic/claude-3-haiku-20240307',
   },
   {
-    name: 'Deepseek R1',
-    value: 'deepseek/deepseek-r1',
+    name: 'Claude 3 Sonnet',
+    value: 'anthropic/claude-3-sonnet-20240229',
   },
 ];
 
@@ -131,7 +131,13 @@ const CourseChatPage = () => {
   const [webSearch, setWebSearch] = useState(false);
   const [isEnrolledFromClient, setIsEnrolledFromClient] = useState<boolean | null>(null);
 
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status } = useChat({
+  api: '/api/chat',
+  onError: (error) => {
+    console.error('Chat error:', error);
+    toast.error('Failed to send message. Please try again.');
+  }
+});
 
   useEffect(() => {
     setMounted(true);
