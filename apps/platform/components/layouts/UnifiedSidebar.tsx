@@ -337,8 +337,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       </Sheet>
 
       {/* Desktop sidebar - shown by default on larger screens */}
-      <div className="hidden lg:block">
-        <div className={`border-r bg-background transition-all duration-300 ease-in-out ${
+      <div className="hidden lg:block h-screen">
+        <div className={`border-r bg-background transition-all duration-300 ease-in-out h-full ${
           isCollapsed ? 'w-16' : 'w-64'
         }`}>
           <SidebarContent />
