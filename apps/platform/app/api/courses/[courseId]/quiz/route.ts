@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  courses,
+  chapters,
+  quizzes,
+  questions,
+  quizAttempts,
+  quizAnswers,
+  evaluationStats,
+  enrollments,
+  findUserByClerkId,
+  findEnrollment
+} from '@/lib/db/queries';
+import { eq, and, or, desc, asc, sql } from 'drizzle-orm';
 
 // GET /api/courses/[courseId]/quiz - Get quiz questions for a course
 export async function GET(
