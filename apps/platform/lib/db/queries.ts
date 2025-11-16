@@ -2,6 +2,22 @@ import { db } from './index';
 import { eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte } from 'drizzle-orm';
 import * as schema from './schema';
 
+// Destructure schema items for easier access
+const {
+  users,
+  courses,
+  chapters,
+  lessons,
+  quizzes,
+  questions,
+  answers,
+  enrollments,
+  courseProgress,
+  lessonProgress,
+  quizAttempts,
+  userAnswers,
+} = schema;
+
 // Re-export db for convenience
 export { db };
 
