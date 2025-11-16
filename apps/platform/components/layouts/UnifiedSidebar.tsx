@@ -116,7 +116,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
       items: [
         { name: 'All Courses', href: '/dashboard/admin/courses', icon: BookOpen },
         { name: 'Create Course', href: '/dashboard/admin/courses/new', icon: BookOpen },
-        { name: 'Course Categories', href: '/dashboard/admin/courses/categories', icon: FileText },
       ],
       collapsible: true,
       open: coursesOpen,
