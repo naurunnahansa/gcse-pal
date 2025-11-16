@@ -80,7 +80,7 @@ const DashboardOverview = () => {
 
   return (
     <>
-      <div className="bg-gray-50 flex-1">
+      <div className="bg-gray-50 min-h-screen">
         <div className="px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-12">

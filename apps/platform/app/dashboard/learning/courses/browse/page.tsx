@@ -126,7 +126,7 @@ const BrowseCourses = () => {
   };
 
   return (
-    <div>
+    <div className="min-h-screen">
       <div className="flex-1">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-8">
@@ -136,7 +136,7 @@ const BrowseCourses = () => {
           </div>
         </div>
 
-        <div className="bg-gray-50 flex-1">
+        <div className="bg-gray-50 flex-1 min-h-[calc(100vh-88px)]">
           <div className="max-w-7xl mx-auto px-6 py-8">
             {/* Search and Filters */}
             <div className="mb-8 space-y-4">

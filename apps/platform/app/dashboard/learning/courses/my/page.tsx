@@ -154,16 +154,17 @@ const MyCourses = () => {
   };
 
   return (
-      <div className="flex-1">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-8">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Courses</h1>
-            <p className="text-gray-600">Track your learning progress and continue your courses</p>
+      <div className="min-h-screen">
+        <div className="flex-1">
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 px-6 py-8">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Courses</h1>
+              <p className="text-gray-600">Track your learning progress and continue your courses</p>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-gray-50 flex-1">
+        <div className="bg-gray-50 flex-1 min-h-[calc(100vh-88px)]">
           <div className="max-w-7xl mx-auto px-6 py-8">
             {/* Statistics Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -374,6 +375,7 @@ const MyCourses = () => {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
   );
