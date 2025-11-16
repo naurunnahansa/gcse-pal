@@ -1,45 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import {
-  db,
-  users,
-  courses,
-  enrollments,
-  findUserByClerkId,
-  findCourseById,
-  findEnrollment,
-  createEnrollment
-} from '@/lib/db';
-import { eq, and, sql } from 'drizzle-orm';
+
+// Add timeout utility
+const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+};
 
 // POST /api/courses/[courseId]/enroll - Enroll user in course
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
+  console.log('🔍 ENROLL: Starting enrollment request...');
+
   try {
-    const { userId } = await auth();
+    console.log('🔍 ENROLL: Attempting to get auth()...');
+
+    // Add timeout to auth call
+    const { userId } = await withTimeout(auth(), 5000);
+    console.log('🔍 ENROLL: Auth result userId:', userId);
+
     if (!userId) {
+      console.log('🔍 ENROLL: No userId found, returning 401');
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Unauthorized - please sign in' },
         { status: 401 }
       );
     }
 
     const { courseId } = await params;
+    console.log('🔍 ENROLL: courseId extracted:', courseId);
 
-    // Get user from database
-    const user = await findUserByClerkId(userId);
+    // Import db functions only after auth succeeds
+    console.log('🔍 ENROLL: Importing database functions...');
+    const {
+      db,
+      users,
+      courses,
+      enrollments,
+      findUserByClerkId,
+      findCourseById,
+      findEnrollment,
+      createEnrollment
+    } = await import('@/lib/db');
+
+    // Get user from database with timeout
+    console.log('🔍 ENROLL: Looking up user by clerkId:', userId);
+    const user = await withTimeout(findUserByClerkId(userId), 3000);
+    console.log('🔍 ENROLL: User lookup result:', user ? 'found' : 'not found');
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User not found' },
+        { success: false, error: 'User not found in database' },
         { status: 404 }
       );
     }
 
-    // Get course
-    const course = await findCourseById(courseId);
+    // Get course with timeout
+    console.log('🔍 ENROLL: Looking up course...');
+    const course = await withTimeout(findCourseById(courseId), 3000);
+    console.log('🔍 ENROLL: Course lookup result:', course ? 'found' : 'not found');
 
     if (!course) {
       return NextResponse.json(
@@ -57,7 +82,9 @@ export async function POST(
     }
 
     // Check if already enrolled
-    const existingEnrollment = await findEnrollment(user.id, courseId);
+    console.log('🔍 ENROLL: Checking existing enrollment...');
+    const existingEnrollment = await withTimeout(findEnrollment(user.id, courseId), 3000);
+    console.log('🔍 ENROLL: Existing enrollment result:', existingEnrollment ? 'found' : 'not found');
 
     if (existingEnrollment) {
       return NextResponse.json(
@@ -67,11 +94,13 @@ export async function POST(
     }
 
     // Create enrollment
-    const enrollment = await createEnrollment({
+    console.log('🔍 ENROLL: Creating enrollment...');
+    const enrollment = await withTimeout(createEnrollment({
       userId: user.id,
       courseId: courseId,
       status: 'active',
-    });
+    }), 5000);
+    console.log('🔍 ENROLL: Enrollment created successfully');
 
     // Note: enrollmentCount is now calculated dynamically, no need to update it
 
@@ -84,9 +113,23 @@ export async function POST(
       },
     });
   } catch (error) {
+    console.error('🔍 ENROLL: Error occurred:', error);
+
+    // Handle timeout errors specifically
+    if (error instanceof Error && error.message.includes('timed out')) {
+      return NextResponse.json(
+        { success: false, error: 'Request timed out - please try again' },
+        { status: 408 }
+      );
+    }
+
     console.error('Enroll course error:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      {
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
