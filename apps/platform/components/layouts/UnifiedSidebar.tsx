@@ -251,11 +251,11 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
                         title={item.name}
                       >
                         <item.icon className="h-4 w-4 flex-shrink-0" />
-                        <div className="flex items-center gap-2">
-                        <span>{item.name}</span>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="truncate">{item.name}</span>
                         {item.comingSoon && (
-                          <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded-full font-medium">
-                            Coming Soon
+                          <span className="text-xs bg-orange-100 text-orange-800 px-1 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                            Soon
                           </span>
                         )}
                       </div>
@@ -289,11 +289,11 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
                     >
                       <item.icon className="h-4 w-4 flex-shrink-0" />
                       {!isCollapsed && (
-                        <div className="flex items-center gap-2">
-                          <span>{item.name}</span>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="truncate">{item.name}</span>
                           {item.comingSoon && (
-                            <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded-full font-medium">
-                              Coming Soon
+                            <span className="text-xs bg-orange-100 text-orange-800 px-1 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                              Soon
                             </span>
                           )}
                         </div>
