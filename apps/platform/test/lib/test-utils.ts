@@ -98,7 +98,7 @@ export function createMockRequest(
     },
   }
 
-  if (body) {
+  if (body !== undefined) {
     requestInit.body = JSON.stringify(body)
   }
 
@@ -107,6 +107,11 @@ export function createMockRequest(
   // Mock Clerk auth
   if (userId) {
     ;(request as any).auth = () => Promise.resolve({ userId })
+  }
+
+  // Mock JSON parsing to return the original body
+  if (body !== undefined) {
+    ;(request as any).json = () => Promise.resolve(body)
   }
 
   return request

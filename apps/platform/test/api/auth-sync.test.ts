@@ -81,15 +81,16 @@ describe('/api/auth/sync', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.data).toMatchObject({
-        id: mockUsers.student.id,
-        clerkId: mockUsers.student.userId,
-        email: mockUsers.student.email,
-        name: mockUsers.student.name,
-        role: mockUsers.student.role,
-        username: 'student_user',
-        settings: null, // Should be null since userSettings was removed
-      })
+      // Check the main fields are present
+      expect(data.data.id).toBe(mockUsers.student.id)
+      expect(data.data.clerkId).toBe(mockUsers.student.userId)
+      expect(data.data.email).toBe(mockUsers.student.email)
+      expect(data.data.name).toBe(mockUsers.student.name)
+      expect(data.data.role).toBe(mockUsers.student.role)
+      expect(data.data.username).toBe('student_user')
+
+      // Check that avatar field exists (even if null)
+      expect(data.data).toHaveProperty('avatar')
 
       expect(getAuthenticatedUser).toHaveBeenCalled()
       expect(syncUserWithDatabase).toHaveBeenCalledWith(mockUsers.student.userId)
@@ -174,15 +175,16 @@ describe('/api/auth/sync', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(data.data).toMatchObject({
-        id: mockUsers.student.id,
-        clerkId: mockUsers.student.userId,
-        email: mockUsers.student.email,
-        name: mockUsers.student.name,
-        role: mockUsers.student.role,
-        username: 'student_user',
-        settings: null, // Should be null since userSettings was removed
-      })
+      // Check the main fields are present
+      expect(data.data.id).toBe(mockUsers.student.id)
+      expect(data.data.clerkId).toBe(mockUsers.student.userId)
+      expect(data.data.email).toBe(mockUsers.student.email)
+      expect(data.data.name).toBe(mockUsers.student.name)
+      expect(data.data.role).toBe(mockUsers.student.role)
+      expect(data.data.username).toBe('student_user')
+
+      // Check that avatar field exists (even if null)
+      expect(data.data).toHaveProperty('avatar')
     })
 
     it('should handle user not found in database', async () => {
@@ -211,6 +213,8 @@ describe('/api/auth/sync', () => {
         name: mockUsers.student.name,
         avatar: null,
         role: mockUsers.student.role,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
 
       const request = createMockRequest('http://localhost:3000/api/auth/sync', {

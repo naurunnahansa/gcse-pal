@@ -24,8 +24,10 @@ export const mockDatabase = {
   courses: [],
   lessons: [],
   enrollments: [],
-  progress: [],
+  lessonProgress: [],
   chapters: [],
+  answers: [],
+  videos: [],
 }
 
 export const resetMockDatabase = () => {
@@ -33,6 +35,8 @@ export const resetMockDatabase = () => {
   mockDatabase.courses = []
   mockDatabase.lessons = []
   mockDatabase.enrollments = []
-  mockDatabase.progress = []
+  mockDatabase.lessonProgress = []
   mockDatabase.chapters = []
+  mockDatabase.answers = []
+  mockDatabase.videos = []
 }

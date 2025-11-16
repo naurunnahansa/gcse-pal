@@ -4,13 +4,14 @@ import { createMockRequest } from '../lib/test-utils'
 
 // Mock Mux
 vi.mock('@mux/mux-node', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    video: {
+  default: class {
+    constructor() {}
+    video = {
       assets: {
         retrieve: vi.fn(),
       },
-    },
-  })),
+    }
+  },
 }))
 
 // Mock crypto
@@ -197,14 +198,15 @@ describe('/api/videos/mux-webhook', () => {
       }
 
       const Mux = (await import('@mux/mux-node')).default
-      const mockMux = {
-        video: {
-          assets: {
-            retrieve: vi.fn().mockResolvedValue(mockAsset),
-          },
+      const mockRetrieve = vi.fn().mockResolvedValue(mockAsset)
+
+      // Mock the retrieve method on the prototype
+      const originalPrototype = Mux.prototype
+      originalPrototype.video = {
+        assets: {
+          retrieve: mockRetrieve,
         },
       }
-      vi.mocked(Mux).mockImplementation(() => mockMux)
 
       const { db, lessons } = await import('@/lib/db')
       vi.mocked(db.select).mockReturnValue({
