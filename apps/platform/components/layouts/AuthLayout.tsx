@@ -40,7 +40,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </Button>
           )}
 
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center pl-4">
           <Image
             src="/logo-full.png"
             alt="GCSEPal"

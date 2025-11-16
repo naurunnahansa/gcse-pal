@@ -150,7 +150,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       <div className="flex h-16 items-center justify-between border-b">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''} ${isCollapsed ? 'w-full' : 'gap-2'}`}>
           <Link href={userRole === 'admin' ? '/dashboard/admin/overview' : '/dashboard'} className="flex items-center">
-            <div className={`flex items-center justify-center ${isCollapsed ? 'w-8' : ''}`}>
+            <div className={`flex items-center justify-center ${isCollapsed ? 'w-8' : ''} ${isCollapsed ? '' : 'pl-4'}`}>
               <Image
                 src="/logo-full.png"
                 alt="GCSEPal"
