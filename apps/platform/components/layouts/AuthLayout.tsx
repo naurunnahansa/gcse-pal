@@ -40,20 +40,17 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </Button>
           )}
 
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center">
-              <Image
-                src="/badge-logo.png"
-                alt="GCSEPal"
-                width={32}
-                height={32}
-                className="object-contain"
-                quality={100}
-                priority
-              />
-            </div>
-            <span className="text-xl font-bold text-gray-900">GCSEPal</span>
-          </div>
+          <div className="flex items-center justify-center">
+          <Image
+            src="/logo-full.png"
+            alt="GCSEPal"
+            width={100}
+            height={44}
+            className="object-contain"
+            quality={100}
+            priority
+          />
+        </div>
 
           {!showBackButton && <div className="w-16"></div>}
         </div>
