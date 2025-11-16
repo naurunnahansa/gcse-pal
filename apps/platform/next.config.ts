@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // TypeScript setting for development
+  // Temporarily disable Turbopack to isolate build hanging issue
+  // turbopack: {
+  //   root: '/Users/lilu/Desktop/gcse-pal',
+  // },
+
+  // TypeScript setting for development - enable for production, disable for dev speed
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
   },
 
   // Image optimization settings
@@ -17,6 +22,15 @@ const nextConfig: NextConfig = {
   // Output configuration
   output: 'standalone',
   trailingSlash: true,
+
+  // Build optimizations
+  compress: true,
+  poweredByHeader: false,
+
+  // Experimental optimizations
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+  },
 
   // Security headers
   async headers() {

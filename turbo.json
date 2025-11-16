@@ -4,21 +4,26 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["NODE_ENV"],
+      "inputs": ["src/**", "public/**", "package.json"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types"],
+      "inputs": ["src/**", "types/**", "*.ts", "*.tsx"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "inputs": ["src/**", "*.ts", "*.tsx", "*.js", "*.jsx"]
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**", "test/**", "*.test.*", "*.spec.*"]
     },
     "clean": {
       "cache": false

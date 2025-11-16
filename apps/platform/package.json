@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:legacy": "NODE_OPTIONS='--max-old-space-size=4096' NEXT_BUILD_WORKERS=1 next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
