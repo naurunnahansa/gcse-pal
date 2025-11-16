@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,11 @@ import {
   Eye,
   Edit,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useStudents } from "@/hooks/useStudents";
+import { toast } from "sonner";
 
 interface Student {
   id: string;
@@ -42,6 +45,35 @@ const StudentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const {
+    students,
+    stats,
+    loading,
+    error,
+    fetchStudents,
+    refetch,
+  } = useStudents({
+    autoFetch: true,
+    search: debouncedSearchTerm,
+    grade: selectedGrade,
+    status: selectedStatus,
+  });
+
+  const handleRefresh = () => {
+    toast.info('Refreshing student data...');
+    refetch();
+  };
 
   if (!isAuthenticated || !user) {
     return (
@@ -57,78 +89,6 @@ const StudentsPage = () => {
     );
   }
 
-  // Mock students data
-  const students: Student[] = [
-    {
-      id: '1',
-      name: 'Emma Johnson',
-      email: 'emma.j@school.edu',
-      grade: '10',
-      enrolledCourses: 5,
-      completedCourses: 2,
-      studyTime: 12.5,
-      lastActive: '2 hours ago',
-      status: 'active',
-      progress: 68,
-    },
-    {
-      id: '2',
-      name: 'Michael Chen',
-      email: 'michael.c@school.edu',
-      grade: '11',
-      enrolledCourses: 6,
-      completedCourses: 3,
-      studyTime: 18.2,
-      lastActive: '1 day ago',
-      status: 'active',
-      progress: 75,
-    },
-    {
-      id: '3',
-      name: 'Sophia Williams',
-      email: 'sophia.w@school.edu',
-      grade: '10',
-      enrolledCourses: 4,
-      completedCourses: 1,
-      studyTime: 8.3,
-      lastActive: '3 days ago',
-      status: 'at-risk',
-      progress: 42,
-    },
-    {
-      id: '4',
-      name: 'James Brown',
-      email: 'james.b@school.edu',
-      grade: '12',
-      enrolledCourses: 7,
-      completedCourses: 5,
-      studyTime: 24.7,
-      lastActive: '5 hours ago',
-      status: 'active',
-      progress: 85,
-    },
-    {
-      id: '5',
-      name: 'Olivia Davis',
-      email: 'olivia.d@school.edu',
-      grade: '11',
-      enrolledCourses: 5,
-      completedCourses: 2,
-      studyTime: 14.1,
-      lastActive: '1 week ago',
-      status: 'inactive',
-      progress: 55,
-    },
-  ];
-
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGrade = selectedGrade === 'all' || student.grade === selectedGrade;
-    const matchesStatus = selectedStatus === 'all' || student.status === selectedStatus;
-    return matchesSearch && matchesGrade && matchesStatus;
-  });
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
@@ -138,12 +98,21 @@ const StudentsPage = () => {
     }
   };
 
-  const stats = {
-    total: students.length,
-    active: students.filter(s => s.status === 'active').length,
-    atRisk: students.filter(s => s.status === 'at-risk').length,
-    avgProgress: Math.round(students.reduce((sum, s) => sum + s.progress, 0) / students.length),
-  };
+  // Show error state
+  if (error && !loading) {
+    return (
+      <div className="p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Error Loading Students</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -210,6 +179,10 @@ const StudentsPage = () => {
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -278,63 +251,107 @@ const StudentsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="border-b border-border hover:bg-gray-50">
-                    <td className="p-4">
-                      <div>
-                        <p className="font-medium">{student.name}</p>
-                        <p className="text-sm text-muted-foreground">{student.email}</p>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm">Grade {student.grade}</span>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-sm">
-                        <p>{student.completedCourses}/{student.enrolledCourses}</p>
-                        <p className="text-muted-foreground">courses</p>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${student.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{student.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{student.studyTime}h</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-muted-foreground">{student.lastActive}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
-                        {student.status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-muted-foreground">Loading students...</p>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : students.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Users className="h-12 w-12 text-muted-foreground" />
+                        <p className="text-lg font-medium">No students found</p>
+                        <p className="text-muted-foreground">
+                          {searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all'
+                            ? 'Try adjusting your filters'
+                            : 'No students have registered yet'
+                          }
+                        </p>
+                        {(searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all') && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSearchTerm('');
+                              setSelectedGrade('all');
+                              setSelectedStatus('all');
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  students.map((student) => (
+                    <tr key={student.id} className="border-b border-border hover:bg-gray-50">
+                      <td className="p-4">
+                        <div>
+                          <p className="font-medium">{student.name}</p>
+                          <p className="text-sm text-muted-foreground">{student.email}</p>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm">Grade {student.grade}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm">
+                          <p>{student.completedCourses}/{student.enrolledCourses}</p>
+                          <p className="text-muted-foreground">courses</p>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{ width: `${student.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{student.progress}%</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>{student.studyTime}h</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm text-muted-foreground">{student.lastActive}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
+                          {student.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            toast.info('Student details view coming soon');
+                          }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            toast.info('Student editing coming soon');
+                          }}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            toast.info('More student actions coming soon');
+                          }}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

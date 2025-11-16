@@ -185,14 +185,15 @@ export const createCourseWithSlug = async (courseData: Omit<NewCourse, 'slug'>) 
   let slug = baseSlug;
   let counter = 1;
 
-  while (true) {
+  const MAX_RETRIES = 100;
+  while (counter <= MAX_RETRIES) {
     try {
       const result = await db.insert(courses)
         .values({ ...courseData, slug })
         .returning();
       return result[0];
     } catch (error: any) {
-      if (error.code === '23505' && counter < 100) {
+      if (error.code === '23505' && counter < MAX_RETRIES) {
         slug = `${baseSlug}-${counter}`;
         counter++;
       } else {
@@ -200,6 +201,7 @@ export const createCourseWithSlug = async (courseData: Omit<NewCourse, 'slug'>) 
       }
     }
   }
+  throw new Error(`Failed to create unique slug after ${MAX_RETRIES} attempts`);
 };
 
 // Chapters

@@ -10,13 +10,19 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { LanguageModelUsage } from "ai";
 import { type ComponentProps, createContext, useContext } from "react";
-import { getUsage } from "tokenlens";
 
 const PERCENT_MAX = 100;
 const ICON_RADIUS = 10;
 const ICON_VIEWBOX = 24;
 const ICON_CENTER = 12;
 const ICON_STROKE_WIDTH = 2;
+
+// Simple token cost calculation (approximate $0.001 per 1K tokens for most models)
+const TOKEN_COST_PER_1K = 0.001;
+
+function calculateTokenCost(tokens: number): number {
+  return (tokens / 1000) * TOKEN_COST_PER_1K;
+}
 
 type ModelId = string;
 
@@ -196,15 +202,9 @@ export const ContextContentFooter = ({
   ...props
 }: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue();
-  const costUSD = modelId
-    ? getUsage({
-        modelId,
-        usage: {
-          input: usage?.inputTokens ?? 0,
-          output: usage?.outputTokens ?? 0,
-        },
-      }).costUSD?.totalUSD
-    : undefined;
+  const inputTokens = usage?.inputTokens ?? 0;
+  const outputTokens = usage?.outputTokens ?? 0;
+  const costUSD = modelId ? calculateTokenCost(inputTokens + outputTokens) : undefined;
   const totalCost = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -246,12 +246,7 @@ export const ContextInputUsage = ({
     return null;
   }
 
-  const inputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: inputTokens, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined;
+  const inputCost = modelId ? calculateTokenCost(inputTokens) : undefined;
   const inputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -286,12 +281,7 @@ export const ContextOutputUsage = ({
     return null;
   }
 
-  const outputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: 0, output: outputTokens },
-      }).costUSD?.totalUSD
-    : undefined;
+  const outputCost = modelId ? calculateTokenCost(outputTokens) : undefined;
   const outputCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -326,12 +316,7 @@ export const ContextReasoningUsage = ({
     return null;
   }
 
-  const reasoningCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { reasoningTokens },
-      }).costUSD?.totalUSD
-    : undefined;
+  const reasoningCost = modelId ? calculateTokenCost(reasoningTokens) : undefined;
   const reasoningCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -366,12 +351,7 @@ export const ContextCacheUsage = ({
     return null;
   }
 
-  const cacheCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined;
+  const cacheCost = modelId ? calculateTokenCost(cacheTokens) : undefined;
   const cacheCostText = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

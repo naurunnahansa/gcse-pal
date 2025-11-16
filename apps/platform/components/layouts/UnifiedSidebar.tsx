@@ -50,8 +50,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
 
   // Prevent hydration mismatch by initializing state in useEffect
   const [mounted, setMounted] = useState(false);
-  const [coursesOpen, setCoursesOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [coursesOpen, setCoursesOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(true);
 
   const pathname = usePathname();
 
