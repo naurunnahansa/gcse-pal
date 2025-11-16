@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { db, users, userSettings } from '@/lib/db/queries';
+import { db, users } from '@/lib/db';
 import { getAuthenticatedUser, syncUserWithDatabase } from '@/lib/clerk-helper';
 import { eq } from 'drizzle-orm';
 
@@ -93,14 +93,6 @@ export async function GET(req: NextRequest) {
 
       const syncedUser = syncedUserResults[0];
 
-      // Get user settings
-      const settingsResults = await db.select()
-        .from(userSettings)
-        .where(eq(userSettings.userId, syncedUser.id))
-        .limit(1);
-
-      const settings = settingsResults[0];
-
       return NextResponse.json({
         success: true,
         data: {
@@ -111,29 +103,12 @@ export async function GET(req: NextRequest) {
           avatar: syncedUser.avatar,
           role: syncedUser.role,
           username: clerkUser.username,
-          settings: settings ? {
-            theme: settings.theme,
-            emailNotifications: settings.emailNotifications,
-            pushNotifications: settings.pushNotifications,
-            studyReminders: settings.studyReminders,
-            deadlineReminders: settings.deadlineReminders,
-            dailyGoal: settings.dailyGoal,
-            preferredStudyTime: settings.preferredStudyTime,
-            studyDays: settings.studyDays,
-          } : null,
+          settings: null, // userSettings removed in simplified schema
         },
       });
     }
 
     const user = userResults[0];
-
-    // Get user settings
-    const settingsResults = await db.select()
-      .from(userSettings)
-      .where(eq(userSettings.userId, user.id))
-      .limit(1);
-
-    const settings = settingsResults[0];
 
     return NextResponse.json({
       success: true,
@@ -145,16 +120,7 @@ export async function GET(req: NextRequest) {
         avatar: user.avatar,
         role: user.role,
         username: clerkUser.username,
-        settings: settings ? {
-          theme: settings.theme,
-          emailNotifications: settings.emailNotifications,
-          pushNotifications: settings.pushNotifications,
-          studyReminders: settings.studyReminders,
-          deadlineReminders: settings.deadlineReminders,
-          dailyGoal: settings.dailyGoal,
-          preferredStudyTime: settings.preferredStudyTime,
-          studyDays: settings.studyDays,
-        } : null,
+        settings: null, // userSettings removed in simplified schema
       },
     });
   } catch (error) {

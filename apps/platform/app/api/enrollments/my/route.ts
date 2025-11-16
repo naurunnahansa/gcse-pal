@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       .where(inArray(lessons.chapterId, chapterIds));
 
     // Combine the data to match the original structure
-    const enrollments = userEnrollments.map(enrollment => {
+    const enrollmentData = userEnrollments.map(enrollment => {
       const course = enrolledCourses.find(c => c.id === enrollment.courseId);
       if (!course) return null;
 
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
       ));
 
     // Calculate progress for each enrollment
-    const formattedEnrollments = enrollments.map(enrollment => {
+    const formattedEnrollments = enrollmentData.map(enrollment => {
       const totalLessons = enrollment.course.chapters.reduce(
         (sum, chapter) => sum + chapter.lessons.length,
         0

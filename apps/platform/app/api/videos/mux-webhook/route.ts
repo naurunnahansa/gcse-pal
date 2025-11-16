@@ -112,7 +112,7 @@ async function handleAssetReady(event: any) {
       .set({
         muxStatus: 'ready',
         videoUrl: playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null,
-        videoDuration: Math.round((object.duration || 0) * 1000), // Convert to milliseconds
+        videoDurationSeconds: Math.round(object.duration || 0), // Keep in seconds
       })
       .where(eq(lessons.id, lesson.id));
 
