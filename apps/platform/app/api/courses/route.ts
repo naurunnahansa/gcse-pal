@@ -3,7 +3,6 @@ import { auth } from '@clerk/nextjs/server';
 import {
   db,
   users,
-  courses,
   chapters,
   lessons,
   enrollments,
@@ -14,6 +13,12 @@ import {
   createUser,
   createCourseWithSlug
 } from '@/lib/db/queries';
+
+import {
+  coursesCompat,
+  chaptersCompat,
+  usersCompat
+} from '@/lib/db/schema-compat';
 import { eq, and, or, desc, asc, count as drizzleCount, inArray } from 'drizzle-orm';
 import { ensureUserExists } from '@/lib/clerk-helper';
 
@@ -52,13 +57,13 @@ export async function GET(req: NextRequest) {
     const coursesWithChapters = await Promise.all(
       coursesData.map(async (course) => {
         const courseChapters = await db.select({
-          id: chapters.id,
-          title: chapters.title,
-          duration: chapters.duration,
+          id: chaptersCompat.id,
+          title: chaptersCompat.title,
+          duration: chaptersCompat.duration,
         })
-          .from(chapters)
-          .where(eq(chapters.courseId, course.id))
-          .orderBy(asc(chapters.position));
+          .from(chaptersCompat)
+          .where(eq(chaptersCompat.course_id, course.id))
+          .orderBy(asc(chaptersCompat.order));
 
         // Get enrollment count for this course
         const enrollmentCountResult = await db.select({ count: drizzleCount() })
@@ -76,17 +81,17 @@ export async function GET(req: NextRequest) {
           description: course.description,
           subject: course.subject,
           level: course.level,
-          thumbnail: course.thumbnailUrl,
-          instructor: course.instructor || 'GCSE Pal Team',
+          thumbnail: course.thumbnail || course.thumbnail_url,
+          instructor: 'GCSE Pal Team', // No instructor field in database, using default
           duration: totalDuration,
-          difficulty: course.difficulty || 'intermediate',
+          difficulty: 'intermediate', // No difficulty field in database, using default
           topics: [], // Topics not in schema yet, could be derived from tags/keywords
           enrollmentCount,
           rating: 0, // Rating system not implemented yet
           price: 0, // All courses free for now
           chaptersCount: courseChapters.length,
           chapters: courseChapters,
-          createdAt: course.createdAt,
+          createdAt: course.created_at,
         };
       })
     );
@@ -176,40 +181,111 @@ export async function POST(req: NextRequest) {
     // Create course with chapters and lessons using Drizzle transaction
     const result = await db.transaction(async (tx) => {
       // Create the course
-      const courseResult = await tx.insert(courses)
+      console.log('🏗️ Creating course with data:', {
+        title,
+        description,
+        subject,
+        level: level || 'gcse',
+        thumbnailUrl,
+        createdBy: user.id,
+        status: status || 'draft',
+      });
+
+      console.log('🏗️ About to insert course with user:', user.id);
+
+      const courseResult = await tx.insert(coursesCompat)
         .values({
           title,
           description,
           subject,
           level: level || 'gcse',
-          thumbnailUrl,
-          createdBy: user.id,
+          thumbnail: thumbnailUrl,
+          thumbnail_url: thumbnailUrl,  // Also set thumbnail_url for consistency
           status: status || 'draft',
+          created_by: user.id,  // Use created_by instead of instructor/instructor_id
+          slug: title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').substring(0, 50),  // Generate slug from title
         })
         .returning();
 
+      console.log('📋 Course insert result:', courseResult);
+
+      if (!courseResult || courseResult.length === 0) {
+        throw new Error('Failed to create course - no results returned from database');
+      }
+
+      // Extract course data and ID
       const course = courseResult[0];
+
+      console.log('🔍 Course object extraction:', {
+        course,
+        courseType: typeof course,
+        courseId: course?.id,
+        courseIdType: typeof course?.id,
+        courseKeys: course ? Object.keys(course) : 'undefined'
+      });
+
+      if (!course) {
+        throw new Error('Failed to extract course from course creation result');
+      }
+
+      const courseId = course.id;
+
+      console.log('🔍 Direct courseId extraction:', {
+        courseId,
+        courseIdType: typeof courseId,
+        firstResultKeys: courseResult[0] ? Object.keys(courseResult[0]) : 'undefined'
+      });
+
+      if (!courseId) {
+        throw new Error('Failed to extract courseId from course creation result');
+      }
+
+      console.log('✅ Course created successfully:', { id: courseId, title: courseResult[0]?.title });
+      console.log('🔍 Debugging courseId variable:', { courseId, type: typeof courseId });
 
       // If chapters are provided, create them with lessons
       if (chapters && Array.isArray(chapters) && chapters.length > 0) {
-        for (let index = 0; index < chapters.length; index++) {
-          const chapterData = chapters[index];
+        console.log('📚 Creating chapters:', chapters.length);
+
+        // Use for...of to avoid potential closure issues with let in async context
+        for (const [index, chapterData] of chapters.entries()) {
           if (!chapterData.title || !chapterData.title.trim()) {
             throw new Error(`Chapter ${index + 1} title is required`);
           }
 
-          const chapterResult = await tx.insert(chapters)
+          console.log(`📖 Creating chapter ${index + 1}:`, chapterData.title);
+          console.log(`🔍 Debugging before chapter insertion:`, {
+            courseId,
+            courseIdType: typeof courseId,
+            index,
+            chapterDataTitle: chapterData.title
+          });
+
+          // Create a local copy of courseId to avoid any potential closure issues
+          const currentCourseId = courseId;
+
+          const chapterResult = await tx.insert(chaptersCompat)
             .values({
-              courseId: course.id,
+              course_id: currentCourseId,  // Changed from courseId to course_id
               title: chapterData.title,
               description: chapterData.description || '',
-              position: index,
+              order: index,
               duration: chapterData.duration || 0,
-              isPublished: chapterData.isPublished || false,
+              is_published: chapterData.isPublished || false,  // Changed from isPublished to is_published
             })
             .returning();
 
+          if (!chapterResult || chapterResult.length === 0) {
+            throw new Error(`Failed to create chapter ${index + 1} - no results returned from database`);
+          }
+
           const chapter = chapterResult[0];
+
+          if (!chapter) {
+            throw new Error(`Failed to create chapter ${index + 1} - chapter object is null`);
+          }
+
+          console.log(`✅ Chapter created:`, { id: chapter.id, title: chapter.title });
 
           // Create lessons for this chapter if provided
           if (chapterData.lessons && Array.isArray(chapterData.lessons) && chapterData.lessons.length > 0) {
@@ -224,14 +300,18 @@ export async function POST(req: NextRequest) {
                   chapterId: chapter.id,
                   title: lessonData.title,
                   description: lessonData.description || '',
-                  markdownContent: lessonData.markdownContent,
-                  videoUrl: lessonData.videoUrl,
-                  videoDurationSeconds: lessonData.videoDurationSeconds,
                   position: lessonIndex,
+                  contentType: lessonData.contentType || 'mixed',
+                  videoUrl: lessonData.videoUrl,
+                  videoDurationSeconds: lessonData.videoDurationSeconds || 0,
+                  markdownContent: lessonData.markdownContent || lessonData.content || '',
                   duration: lessonData.duration || 0,
                   isPublished: lessonData.isPublished || false,
                   isPreview: lessonData.isPreview || false,
-                  contentType: lessonData.contentType || 'mixed',
+                  muxAssetId: lessonData.muxAssetId,
+                  muxPlaybackId: lessonData.muxPlaybackId,
+                  muxUploadId: lessonData.muxUploadId,
+                  muxStatus: lessonData.muxStatus || 'preparing',
                 });
             }
           }
@@ -239,41 +319,70 @@ export async function POST(req: NextRequest) {
       }
 
       // Fetch the complete course with all relations
-      const courseChapters = await tx.select({
-        id: chapters.id,
-        courseId: chapters.courseId,
-        title: chapters.title,
-        description: chapters.description,
-        position: chapters.position,
-        duration: chapters.duration,
-        isPublished: chapters.isPublished,
-        createdAt: chapters.createdAt,
-        updatedAt: chapters.updatedAt,
-      })
-        .from(chapters)
-        .where(eq(chapters.courseId, course.id))
-        .orderBy(asc(chapters.position));
+      console.log('🔍 About to query chapters for courseId:', courseId);
+
+      // Check if chapters table is available before querying
+      let courseChapters = [];
+      try {
+        courseChapters = await tx.select({
+          id: chaptersCompat.id,
+          course_id: chaptersCompat.course_id,  // Changed from courseId to course_id
+          title: chaptersCompat.title,
+          description: chaptersCompat.description,
+          order: chaptersCompat.order,
+          duration: chaptersCompat.duration,
+          is_published: chaptersCompat.is_published,  // Changed from isPublished to is_published
+          created_at: chaptersCompat.created_at,  // Changed from createdAt
+          updated_at: chaptersCompat.updated_at,  // Changed from updatedAt
+        })
+          .from(chaptersCompat)
+          .where(eq(chaptersCompat.course_id, courseId))  // Changed from chapters.courseId
+          .orderBy(asc(chaptersCompat.order));
+        console.log('🔍 Chapters query result:', courseChapters);
+      } catch (chaptersError) {
+        console.error('❌ Error querying chapters:', chaptersError);
+        // Set empty chapters array if query fails
+        courseChapters = [];
+      }
+
+      console.log('🔍 About to process chapters. courseChapters:', courseChapters);
+      console.log('🔍 chapters variable:', chapters);
+      console.log('🔍 chapters type:', typeof chapters);
 
       // Get lessons for each chapter
-      const chaptersWithLessons = await Promise.all(
-        courseChapters.map(async (chapter) => {
-          const chapterLessons = await tx.select()
-            .from(lessons)
-            .where(eq(lessons.chapterId, chapter.id))
-            .orderBy(asc(lessons.position));
+      let chaptersWithLessons = [];
+      try {
+        chaptersWithLessons = await Promise.all(
+          courseChapters.map(async (chapter) => {
+            console.log('🔍 Processing chapter:', chapter);
+            const chapterLessons = await tx.select()
+              .from(lessons)
+              .where(eq(lessons.chapterId, chapter.id))
+              .orderBy(asc(lessons.position));
 
-          return {
-            ...chapter,
-            lessons: chapterLessons,
-          };
-        })
-      );
+            return {
+              ...chapter,
+              lessons: chapterLessons,
+            };
+          })
+        );
+      } catch (lessonsError) {
+        console.error('❌ Error processing lessons:', lessonsError);
+        chaptersWithLessons = [];
+      }
 
       // Get counts
-      const enrollmentCountResult = await tx.select({ count: drizzleCount() })
-        .from(enrollments)
-        .where(eq(enrollments.courseId, course.id));
+      let enrollmentCountResult = [];
+      try {
+        enrollmentCountResult = await tx.select({ count: drizzleCount() })
+          .from(enrollments)
+          .where(eq(enrollments.courseId, courseId));
+      } catch (enrollmentError) {
+        console.error('❌ Error getting enrollment count:', enrollmentError);
+        enrollmentCountResult = [{ count: 0 }];
+      }
 
+      console.log('✅ About to return course data');
       return {
         ...course,
         chapters: chaptersWithLessons,
@@ -290,17 +399,37 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Create course error:', error);
+    console.error('Error details:', {
+      errorType: typeof error,
+      errorMessage: error instanceof Error ? error.message : 'Not an Error instance',
+      errorStack: error instanceof Error ? error.stack : 'No stack trace',
+      errorObject: error
+    });
 
     // Handle validation errors specifically
     if (error instanceof Error) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        {
+          success: false,
+          error: error.message,
+          details: {
+            type: 'validation_error',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      {
+        success: false,
+        error: 'Internal server error',
+        details: {
+          type: 'unknown_error',
+          errorData: JSON.stringify(error)
+        }
+      },
       { status: 500 }
     );
   }

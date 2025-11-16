@@ -36,6 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clerk = useClerk();
   const [isUpdating, setIsUpdating] = useState(false);
   const [userRole, setUserRole] = useState<'student' | 'admin' | 'teacher' | null>(null);
+  const [lastSyncedUserId, setLastSyncedUserId] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
 
   // Sync user with our database when they sign in
   useEffect(() => {
@@ -43,6 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔐 AuthProvider sync check:', { isSignedIn, isLoaded, userExists: !!user });
 
       if (isSignedIn && user && isLoaded) {
+        const currentUserId = user.id;
+        const now = Date.now();
+
+        // Check if we've already synced this user recently (within last 30 seconds)
+        if (lastSyncedUserId === currentUserId && (now - lastSyncTime) < 30000) {
+          console.log('⏭️ Skipping sync - user already synced recently');
+          return;
+        }
+
         try {
           console.log('🔄 Starting user sync for:', user.primaryEmailAddress?.emailAddress);
 
@@ -104,15 +115,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (result.data?.role) {
               setUserRole(result.data.role);
               console.log('🎯 User role set to:', result.data.role);
+
+              // Update sync tracking
+              setLastSyncedUserId(currentUserId);
+              setLastSyncTime(now);
             } else {
               console.log('⚠️ No role found in sync response');
+
+              // Still update tracking to avoid repeated calls
+              setLastSyncedUserId(currentUserId);
+              setLastSyncTime(now);
             }
           }
         } catch (error) {
           console.error('💥 Error syncing user:', error);
+
+          // Still update tracking to avoid rapid retry loops
+          setLastSyncedUserId(currentUserId);
+          setLastSyncTime(now);
         }
       } else {
         console.log('⏸️ Sync conditions not met:', { isSignedIn, isLoaded, userExists: !!user });
+
+        // Reset tracking when user signs out
+        if (!isSignedIn) {
+          setLastSyncedUserId(null);
+          setLastSyncTime(0);
+          setUserRole(null);
+        }
       }
     };
 
@@ -123,12 +153,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (window as any).refreshUserRole = syncUser;
       console.log('💡 Manual refresh available: call window.refreshUserRole()');
 
-      // Fallback: Try to sync again after a delay if role is still null
-      if (!userRole && isSignedIn) {
+      // Fallback: Try to sync again after a delay if role is still null and we haven't synced recently
+      if (!userRole && isSignedIn && (!lastSyncedUserId || (now - lastSyncTime) > 10000)) {
         setTimeout(() => {
           console.log('🔄 Fallback sync attempt...');
           syncUser();
-        }, 3000); // Increased to 3 seconds for bypass fallback
+        }, 5000); // Increased to 5 seconds and added check
       }
     }
   }, [isSignedIn, user, isLoaded]);

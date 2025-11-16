@@ -293,7 +293,8 @@ export default function CreateCoursePage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create course');
+        console.error('Course creation API error:', error);
+        throw new Error(error.error || error.message || 'Failed to create course');
       }
 
       const result = await response.json();
