@@ -1,41 +1,24 @@
 import { db } from './index';
 import { eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte } from 'drizzle-orm';
-import * as schema from './schema';
+import * as schema from './schema-new';
 
 // Re-export db for convenience
 export { db };
-// Re-export schema for convenience
 
-// Re-export schema for convenience
+// Re-export simplified schema for convenience
 export {
   users,
   courses,
   chapters,
   lessons,
-  enrollments,
-  progress,
   quizzes,
   questions,
+  answers,
+  enrollments,
+  courseProgress,
+  lessonProgress,
   quizAttempts,
-  quizAnswers,
-  notes,
-  tasks,
-  studySessions,
-  studyActivities,
-  bookmarks,
-  userSettings,
-  courseTags,
-  userFavorites,
-  studyGroups,
-  studyGroupMembers,
-  studyGroupMessages,
-  flashCards,
-  flashCardReviews,
-  evaluationStats,
-  userItems,
-  itemTags,
-  activityLog,
-  quizSubmissions,
+  userAnswers,
   // Types
   type User,
   type NewUser,
@@ -45,57 +28,29 @@ export {
   type NewChapter,
   type Lesson,
   type NewLesson,
-  type Enrollment,
-  type NewEnrollment,
-  type Progress,
-  type NewProgress,
   type Quiz,
   type NewQuiz,
   type Question,
   type NewQuestion,
+  type Answer,
+  type NewAnswer,
+  type Enrollment,
+  type NewEnrollment,
+  type CourseProgress,
+  type NewCourseProgress,
+  type LessonProgress,
+  type NewLessonProgress,
   type QuizAttempt,
   type NewQuizAttempt,
-  type QuizAnswer,
-  type NewQuizAnswer,
-  type Note,
-  type NewNote,
-  type Task,
-  type NewTask,
-  type StudySession,
-  type NewStudySession,
-  type StudyActivity,
-  type NewStudyActivity,
-  type Bookmark,
-  type NewBookmark,
-  type UserSettings,
-  type NewUserSettings,
-  type CourseTag,
-  type NewCourseTag,
-  type UserFavorite,
-  type NewUserFavorite,
-  type StudyGroup,
-  type NewStudyGroup,
-  type StudyGroupMember,
-  type NewStudyGroupMember,
-  type StudyGroupMessage,
-  type NewStudyGroupMessage,
-  type FlashCard,
-  type NewFlashCard,
-  type FlashCardReview,
-  type NewFlashCardReview,
-  type EvaluationStats,
-  type NewEvaluationStats,
-  type UserItem,
-  type NewUserItem,
-  type ItemTag,
-  type NewItemTag,
-  type ActivityLog,
-  type NewActivityLog,
-  type QuizSubmission,
-  type NewQuizSubmission,
-} from './schema';
+  type UserAnswer,
+  type NewUserAnswer,
+} from './schema-new';
 
-// Common query helpers
+// ========================================
+// CORE QUERY HELPERS (Simplified)
+// ========================================
+
+// Users
 export const findUserByClerkId = async (clerkId: string) => {
   const result = await db.select()
     .from(users)
@@ -112,50 +67,28 @@ export const findUserByEmail = async (email: string) => {
   return result[0] || null;
 };
 
+export const createUser = async (userData: NewUser) => {
+  const result = await db.insert(users)
+    .values(userData)
+    .returning();
+  return result[0];
+};
+
+export const updateUser = async (id: string, userData: Partial<NewUser>) => {
+  const result = await db.update(users)
+    .set({ ...userData, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return result[0];
+};
+
+// Courses
 export const findCourseById = async (id: string) => {
   const result = await db.select()
     .from(courses)
     .where(eq(courses.id, id))
     .limit(1);
   return result[0] || null;
-};
-
-export const findChapterById = async (id: string) => {
-  const result = await db.select()
-    .from(chapters)
-    .where(eq(chapters.id, id))
-    .limit(1);
-  return result[0] || null;
-};
-
-export const findLessonById = async (id: string) => {
-  const result = await db.select()
-    .from(lessons)
-    .where(eq(lessons.id, id))
-    .limit(1);
-  return result[0] || null;
-};
-
-export const findEnrollment = async (userId: string, courseId: string) => {
-  const result = await db.select()
-    .from(enrollments)
-    .where(and(
-      eq(enrollments.userId, userId),
-      eq(enrollments.courseId, courseId)
-    ))
-    .limit(1);
-  return result[0] || null;
-};
-
-export const countCourses = async (whereConditions: any = {}) => {
-  let query = db.select({ count: count() }).from(courses);
-
-  if (whereConditions.status) {
-    query = query.where(eq(courses.status, whereConditions.status));
-  }
-
-  const result = await query;
-  return result[0]?.count || 0;
 };
 
 export const findCoursesWithFilters = async (filters: {
@@ -208,19 +141,246 @@ export const findCoursesWithFilters = async (filters: {
   return coursesData;
 };
 
-export const createUser = async (userData: NewUser) => {
-  const result = await db.insert(users)
-    .values(userData)
+export const countCourses = async (whereConditions: any = {}) => {
+  let query = db.select({ count: count() }).from(courses);
+
+  if (whereConditions.status) {
+    query = query.where(eq(courses.status, whereConditions.status));
+  }
+
+  const result = await query;
+  return result[0]?.count || 0;
+};
+
+export const createCourse = async (courseData: NewCourse) => {
+  const result = await db.insert(courses)
+    .values(courseData)
     .returning();
   return result[0];
 };
 
-export const updateUser = async (id: string, userData: Partial<NewUser>) => {
-  const result = await db.update(users)
-    .set({ ...userData, updatedAt: new Date() })
-    .where(eq(users.id, id))
+export const createCourseWithSlug = async (courseData: Omit<NewCourse, 'slug'>) => {
+  const baseSlug = courseData.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  // Ensure unique slug
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    try {
+      const result = await db.insert(courses)
+        .values({ ...courseData, slug })
+        .returning();
+      return result[0];
+    } catch (error: any) {
+      if (error.code === '23505' && counter < 100) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      } else {
+        throw error;
+      }
+    }
+  }
+};
+
+// Chapters
+export const findChapterById = async (id: string) => {
+  const result = await db.select()
+    .from(chapters)
+    .where(eq(chapters.id, id))
+    .limit(1);
+  return result[0] || null;
+};
+
+export const findChaptersByCourseId = async (courseId: string) => {
+  return await db.select()
+    .from(chapters)
+    .where(eq(chapters.courseId, courseId))
+    .orderBy(asc(chapters.order));
+};
+
+export const createChapter = async (chapterData: NewChapter) => {
+  const result = await db.insert(chapters)
+    .values(chapterData)
     .returning();
   return result[0];
+};
+
+// Lessons with Mux integration
+export const findLessonById = async (id: string) => {
+  const result = await db.select()
+    .from(lessons)
+    .where(eq(lessons.id, id))
+    .limit(1);
+  return result[0] || null;
+};
+
+export const findLessonsByChapterId = async (chapterId: string) => {
+  return await db.select()
+    .from(lessons)
+    .where(eq(lessons.chapterId, chapterId))
+    .orderBy(asc(lessons.position));
+};
+
+export const findPublishedLessonsByChapterId = async (chapterId: string) => {
+  return await db.select()
+    .from(lessons)
+    .where(and(
+      eq(lessons.chapterId, chapterId),
+      eq(lessons.isPublished, true)
+    ))
+    .orderBy(asc(lessons.position));
+};
+
+export const createLesson = async (lessonData: NewLesson) => {
+  const result = await db.insert(lessons)
+    .values(lessonData)
+    .returning();
+  return result[0];
+};
+
+export const updateLesson = async (id: string, lessonData: Partial<NewLesson>) => {
+  const result = await db.update(lessons)
+    .set({ ...lessonData, updatedAt: new Date() })
+    .where(eq(lessons.id, id))
+    .returning();
+  return result[0];
+};
+
+// Mux-specific functions
+export const updateLessonMuxData = async (
+  id: string,
+  muxData: {
+    muxAssetId?: string;
+    muxPlaybackId?: string;
+    muxUploadId?: string;
+    muxStatus?: string;
+    videoUrl?: string;
+    videoDurationSeconds?: number;
+  }
+) => {
+  const result = await db.update(lessons)
+    .set({
+      ...muxData,
+      updatedAt: new Date()
+    })
+    .where(eq(lessons.id, id))
+    .returning();
+  return result[0];
+};
+
+export const findLessonsNeedingMuxProcessing = async () => {
+  return await db.select()
+    .from(lessons)
+    .where(and(
+      eq(lessons.contentType, 'video'),
+      or(
+        eq(lessons.muxStatus, 'preparing'),
+        eq(lessons.muxStatus, 'errored'),
+        eq(lessons.muxStatus, 'uploading')
+      )
+    ))
+    .orderBy(asc(lessons.createdAt));
+};
+
+export const findLessonByMuxUploadId = async (uploadId: string) => {
+  const result = await db.select()
+    .from(lessons)
+    .where(eq(lessons.muxUploadId, uploadId))
+    .limit(1);
+  return result[0] || null;
+};
+
+// Quizzes
+export const findQuizById = async (id: string) => {
+  const result = await db.select()
+    .from(quizzes)
+    .where(eq(quizzes.id, id))
+    .limit(1);
+  return result[0] || null;
+};
+
+export const findQuizzesByLessonId = async (lessonId: string) => {
+  return await db.select()
+    .from(quizzes)
+    .where(eq(quizzes.lessonId, lessonId));
+};
+
+export const createQuiz = async (quizData: NewQuiz) => {
+  const result = await db.insert(quizzes)
+    .values(quizData)
+    .returning();
+  return result[0];
+};
+
+// Questions and Answers (Properly Normalized)
+export const findQuestionsByQuizId = async (quizId: string) => {
+  return await db.select()
+    .from(questions)
+    .where(eq(questions.quizId, quizId))
+    .orderBy(asc(questions.order));
+};
+
+export const findAnswersByQuestionId = async (questionId: string) => {
+  return await db.select()
+    .from(answers)
+    .where(eq(answers.questionId, questionId))
+    .orderBy(asc(answers.order));
+};
+
+export const createQuestion = async (questionData: NewQuestion) => {
+  const result = await db.insert(questions)
+    .values(questionData)
+    .returning();
+  return result[0];
+};
+
+export const createAnswer = async (answerData: NewAnswer) => {
+  const result = await db.insert(answers)
+    .values(answerData)
+    .returning();
+  return result[0];
+};
+
+export const createQuestionWithAnswers = async (
+  questionData: NewQuestion,
+  answersData: NewAnswer[]
+) => {
+  const [question] = await db.insert(questions)
+    .values(questionData)
+    .returning();
+
+  const answersWithQuestionId = answersData.map(answer => ({
+    ...answer,
+    questionId: question.id,
+  }));
+
+  await db.insert(answers)
+    .values(answersWithQuestionId);
+
+  return { question, answers: answersWithQuestionId };
+};
+
+// Enrollments
+export const findEnrollment = async (userId: string, courseId: string) => {
+  const result = await db.select()
+    .from(enrollments)
+    .where(and(
+      eq(enrollments.userId, userId),
+      eq(enrollments.courseId, courseId)
+    ))
+    .limit(1);
+  return result[0] || null;
+};
+
+export const findEnrollmentsByUserId = async (userId: string) => {
+  return await db.select()
+    .from(enrollments)
+    .where(eq(enrollments.userId, userId))
+    .orderBy(desc(enrollments.enrolledAt));
 };
 
 export const createEnrollment = async (enrollmentData: NewEnrollment) => {
@@ -245,425 +405,324 @@ export const updateEnrollmentProgress = async (userId: string, courseId: string,
   return result[0];
 };
 
-// New helper functions for consolidated tables
+// Progress Tracking (Split into Course + Lesson)
+export const findCourseProgress = async (userId: string, courseId: string) => {
+  const result = await db.select()
+    .from(courseProgress)
+    .where(and(
+      eq(courseProgress.userId, userId),
+      eq(courseProgress.courseId, courseId)
+    ))
+    .limit(1);
+  return result[0] || null;
+};
 
-// User Items (notes, tasks, bookmarks)
-export const createUserItem = async (itemData: NewUserItem) => {
-  const result = await db.insert(userItems)
-    .values(itemData)
+export const findLessonProgress = async (userId: string, lessonId: string) => {
+  const result = await db.select()
+    .from(lessonProgress)
+    .where(and(
+      eq(lessonProgress.userId, userId),
+      eq(lessonProgress.lessonId, lessonId)
+    ))
+    .limit(1);
+  return result[0] || null;
+};
+
+export const findLessonsProgressByCourseId = async (userId: string, courseId: string) => {
+  return await db.select({
+    lessonProgress,
+    lesson: {
+      id: lessons.id,
+      title: lessons.title,
+      chapterId: lessons.chapterId,
+      order: lessons.order,
+      duration: lessons.duration,
+    }
+  })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+    .where(and(
+      eq(lessonProgress.userId, userId),
+      eq(lessonProgress.courseId, courseId)
+    ))
+    .orderBy(asc(lessons.order));
+};
+
+export const upsertCourseProgress = async (progressData: NewCourseProgress) => {
+  const result = await db.insert(courseProgress)
+    .values(progressData)
+    .onConflictDoUpdate({
+      target: [courseProgress.enrollmentId],
+      set: {
+        lessonsCompleted: progressData.lessonsCompleted,
+        lessonsTotal: progressData.lessonsTotal,
+        quizzesPassed: progressData.quizzesPassed,
+        quizzesTotal: progressData.quizzesTotal,
+        progressPercent: progressData.progressPercent,
+        updatedAt: new Date(),
+      }
+    })
     .returning();
   return result[0];
 };
 
-export const findUserItems = async (userId: string, itemType?: string, lessonId?: string) => {
-  let whereConditions = [eq(userItems.userId, userId)];
+export const upsertLessonProgress = async (progressData: NewLessonProgress) => {
+  const result = await db.insert(lessonProgress)
+    .values(progressData)
+    .onConflictDoUpdate({
+      target: [lessonProgress.enrollmentId, lessonProgress.lessonId],
+      set: {
+        status: progressData.status,
+        videoPositionSeconds: progressData.videoPositionSeconds,
+        timeSpentSeconds: progressData.timeSpentSeconds,
+        startedAt: progressData.startedAt,
+        completedAt: progressData.completedAt,
+        updatedAt: new Date(),
+      }
+    })
+    .returning();
+  return result[0];
+};
 
-  if (itemType) {
-    whereConditions.push(eq(userItems.itemType, itemType as any));
-  }
+// Enhanced progress tracking functions
+export const updateLessonVideoPosition = async (
+  enrollmentId: string,
+  lessonId: string,
+  positionSeconds: number
+) => {
+  const result = await db.update(lessonProgress)
+    .set({
+      videoPositionSeconds: positionSeconds,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(lessonProgress.enrollmentId, enrollmentId),
+      eq(lessonProgress.lessonId, lessonId)
+    ))
+    .returning();
+  return result[0] || null;
+};
 
-  if (lessonId) {
-    whereConditions.push(eq(userItems.lessonId, lessonId));
+export const markLessonCompleted = async (
+  enrollmentId: string,
+  lessonId: string,
+  timeSpentSeconds?: number
+) => {
+  const result = await db.update(lessonProgress)
+    .set({
+      status: 'completed',
+      completedAt: new Date(),
+      timeSpentSeconds: timeSpentSeconds,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(lessonProgress.enrollmentId, enrollmentId),
+      eq(lessonProgress.lessonId, lessonId)
+    ))
+    .returning();
+  return result[0] || null;
+};
+
+export const initializeLessonProgress = async (
+  enrollmentId: string,
+  lessonId: string
+) => {
+  const result = await db.insert(lessonProgress)
+    .values({
+      enrollmentId,
+      lessonId,
+      status: 'not_started',
+    })
+    .onConflictDoNothing()
+    .returning();
+  return result[0] || null;
+};
+
+export const getCourseCompletionStats = async (courseId: string) => {
+  const totalLessons = await db.select({ count: count() })
+    .from(lessons)
+    .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+    .where(and(
+      eq(chapters.courseId, courseId),
+      eq(lessons.isPublished, true)
+    ));
+
+  const totalQuizzes = await db.select({ count: count() })
+    .from(quizzes)
+    .innerJoin(lessons, eq(quizzes.lessonId, lessons.id))
+    .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+    .where(and(
+      eq(chapters.courseId, courseId),
+      eq(quizzes.isPublished, true)
+    ));
+
+  return {
+    totalLessons: totalLessons[0]?.count || 0,
+    totalQuizzes: totalQuizzes[0]?.count || 0,
+  };
+};
+
+// Quiz Attempts and User Answers
+export const findQuizAttemptsByUser = async (userId: string, quizId?: string) => {
+  let whereConditions = [eq(quizAttempts.userId, userId)];
+
+  if (quizId) {
+    whereConditions.push(eq(quizAttempts.quizId, quizId));
   }
 
   return await db.select()
-    .from(userItems)
+    .from(quizAttempts)
     .where(and(...whereConditions))
-    .orderBy(desc(userItems.createdAt));
+    .orderBy(desc(quizAttempts.startedAt));
 };
 
-export const updateUserItem = async (id: string, itemData: Partial<NewUserItem>) => {
-  const result = await db.update(userItems)
-    .set({ ...itemData, updatedAt: new Date() })
-    .where(eq(userItems.id, id))
+export const findUserAnswersByAttempt = async (attemptId: string) => {
+  return await db.select({
+    userAnswer: userAnswers,
+    question: {
+      id: questions.id,
+      question: questions.question,
+      type: questions.type,
+      points: questions.points,
+    },
+    answer: {
+      id: answers.id,
+      answerText: answers.answerText,
+      isCorrect: answers.isCorrect,
+    }
+  })
+    .from(userAnswers)
+    .leftJoin(questions, eq(userAnswers.questionId, questions.id))
+    .leftJoin(answers, eq(userAnswers.answerId, answers.id))
+    .where(eq(userAnswers.attemptId, attemptId));
+};
+
+export const createQuizAttempt = async (attemptData: NewQuizAttempt) => {
+  const result = await db.insert(quizAttempts)
+    .values(attemptData)
     .returning();
   return result[0];
 };
 
-export const deleteUserItem = async (id: string) => {
-  await db.delete(userItems)
-    .where(eq(userItems.id, id));
+export const createUserAnswer = async (answerData: NewUserAnswer) => {
+  const result = await db.insert(userAnswers)
+    .values(answerData)
+    .returning();
+  return result[0];
 };
 
-// Item Tags
-export const createItemTags = async (itemId: string, tags: string[]) => {
-  if (tags.length === 0) return [];
-
-  const tagData = tags.map(tag => ({
-    itemId,
-    tag: tag.toLowerCase().trim()
-  }));
-
-  const result = await db.insert(itemTags)
-    .values(tagData)
+export const createUserAnswers = async (answersData: NewUserAnswer[]) => {
+  const result = await db.insert(userAnswers)
+    .values(answersData)
     .returning();
   return result;
 };
 
-export const findItemTags = async (itemId: string) => {
-  return await db.select()
-    .from(itemTags)
-    .where(eq(itemTags.itemId, itemId));
-};
+// ========================================
+// ANALYTICS (Simplified)
+// ========================================
 
-// Activity Log
-export const createActivityLog = async (activityData: NewActivityLog) => {
-  const result = await db.insert(activityLog)
-    .values(activityData)
-    .returning();
-  return result[0];
-};
-
-export const findUserActivities = async (
-  userId: string,
-  activityType?: string,
-  limit: number = 50,
-  offset: number = 0
-) => {
-  let whereConditions = [eq(activityLog.userId, userId)];
-
-  if (activityType) {
-    whereConditions.push(eq(activityLog.activityType, activityType as any));
-  }
-
-  return await db.select()
-    .from(activityLog)
-    .where(and(...whereConditions))
-    .orderBy(desc(activityLog.startedAt))
-    .limit(limit)
-    .offset(offset);
-};
-
-export const getUserActivityStats = async (userId: string, days: number = 30) => {
-  const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
-  const activities = await db.select({
-    totalDuration: activityLog.duration,
-    activityType: activityLog.activityType
+export const getUserCourseStats = async (userId: string) => {
+  const enrollmentsData = await db.select({
+    course: courses,
+    enrollment: enrollments,
+    courseProgress: courseProgress,
   })
-    .from(activityLog)
-    .where(and(
-      eq(activityLog.userId, userId),
-      gte(activityLog.startedAt, cutoffDate)
-    ));
+    .from(enrollments)
+    .innerJoin(courses, eq(enrollments.courseId, courses.id))
+    .leftJoin(courseProgress, and(
+      eq(courseProgress.userId, userId),
+      eq(courseProgress.courseId, courses.id)
+    ))
+    .where(eq(enrollments.userId, userId));
 
-  return {
-    totalActivities: activities.length,
-    totalStudyTime: activities.reduce((sum, act) => sum + (act.totalDuration || 0), 0),
-    activitiesByType: activities.reduce((acc, act) => {
-      acc[act.activityType] = (acc[act.activityType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
-  };
+  return enrollmentsData.map(({ course, enrollment, courseProgress }) => ({
+    course,
+    enrollment,
+    progress: courseProgress,
+  }));
 };
 
-// Quiz Submissions
-export const createQuizSubmission = async (submissionData: NewQuizSubmission) => {
-  const result = await db.insert(quizSubmissions)
-    .values(submissionData)
-    .returning();
-  return result[0];
-};
-
-export const findQuizSubmissions = async (userId: string, quizId?: string) => {
-  let whereConditions = [eq(quizSubmissions.userId, userId)];
-
-  if (quizId) {
-    whereConditions.push(eq(quizSubmissions.quizId, quizId));
-  }
-
-  return await db.select()
-    .from(quizSubmissions)
-    .where(and(...whereConditions))
-    .orderBy(desc(quizSubmissions.startedAt));
-};
-
-export const getQuizStats = async (userId: string, courseId?: string) => {
-  let query = db.select({
-    score: quizSubmissions.score,
-    passed: quizSubmissions.passed,
-    timeSpent: quizSubmissions.timeSpent,
-    startedAt: quizSubmissions.startedAt,
-    quizId: quizSubmissions.quizId
-  })
-    .from(quizSubmissions)
-    .where(eq(quizSubmissions.userId, userId));
+export const getQuizPerformanceStats = async (userId: string, courseId?: string) => {
+  let whereConditions = [eq(quizAttempts.userId, userId)];
 
   if (courseId) {
-    // This would need to join with quizzes table if courseId filtering is needed
+    whereConditions.push(eq(quizzes.courseId, courseId));
   }
 
-  const submissions = await query;
+  const attempts = await db.select({
+    quizAttempt: quizAttempts,
+    quiz: quizzes,
+  })
+    .from(quizAttempts)
+    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+    .where(and(...whereConditions));
 
-  if (submissions.length === 0) {
+  if (attempts.length === 0) {
     return {
       totalAttempts: 0,
       averageScore: 0,
       bestScore: 0,
       passRate: 0,
-      totalTimeSpent: 0
+      totalTimeSpent: 0,
+      recentAttempts: [],
     };
   }
 
-  const passedCount = submissions.filter(s => s.passed).length;
-  const totalScore = submissions.reduce((sum, s) => sum + s.score, 0);
-  const bestScore = Math.max(...submissions.map(s => s.score));
-  const totalTimeSpent = submissions.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
+  const passedCount = attempts.filter(({ quizAttempt }) => quizAttempt.passed).length;
+  const totalScore = attempts.reduce((sum, { quizAttempt }) => sum + quizAttempt.score, 0);
+  const bestScore = Math.max(...attempts.map(({ quizAttempt }) => quizAttempt.score));
+  const totalTimeSpent = attempts.reduce((sum, { quizAttempt }) => sum + (quizAttempt.timeSpent || 0), 0);
 
   return {
-    totalAttempts: submissions.length,
-    averageScore: totalScore / submissions.length,
+    totalAttempts: attempts.length,
+    averageScore: totalScore / attempts.length,
     bestScore,
-    passRate: (passedCount / submissions.length) * 100,
-    totalTimeSpent
+    passRate: (passedCount / attempts.length) * 100,
+    totalTimeSpent,
+    recentAttempts: attempts.slice(0, 10),
   };
 };
 
-// New helper functions for Phase 2 optimizations
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
 
-// User Preferences (consolidated from user_settings)
-export const updateUserPreferences = async (userId: string, preferences: Record<string, any>) => {
-  const result = await db.update(users)
-    .set({
-      preferences,
-      updatedAt: new Date()
-    })
-    .where(eq(users.id, userId))
-    .returning();
-  return result[0];
-};
+export const getCourseWithContent = async (courseId: string) => {
+  const course = await findCourseById(courseId);
+  if (!course) return null;
 
-export const getUserPreferences = async (userId: string) => {
-  const userResults = await db.select({
-    preferences: users.preferences
+  const chaptersWithLessons = await db.select({
+    chapter: chapters,
+    lessons: db.select().from(lessons).where(eq(lessons.chapterId, chapters.id)).orderBy(asc(lessons.order)),
   })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  return userResults[0]?.preferences || null;
-};
-
-export const updatePreferenceField = async (userId: string, field: string, value: any) => {
-  const result = await db.update(users)
-    .set({
-      preferences: db.raw(`jsonb_set(coalesce(preferences, '{}'), '${field}', ?)`, [JSON.stringify(value)]),
-      updatedAt: new Date()
-    })
-    .where(eq(users.id, userId))
-    .returning();
-  return result[0];
-};
-
-// Study Groups (with consolidated members)
-export const createStudyGroup = async (groupData: any) => {
-  const { creatorId, name, description, courseId, isPrivate = false } = groupData;
-
-  const result = await db.insert(studyGroups)
-    .values({
-      creatorId,
-      name,
-      description,
-      courseId,
-      isPrivate,
-      members: [{
-        user_id: creatorId,
-        role: 'owner',
-        joined_at: new Date().toISOString()
-      }],
-      memberCount: 1
-    })
-    .returning();
-  return result[0];
-};
-
-export const addMemberToStudyGroup = async (groupId: string, userId: string, role: string = 'member') => {
-  const groupResults = await db.select({ members: studyGroups.members, memberCount: studyGroups.memberCount })
-    .from(studyGroups)
-    .where(eq(studyGroups.id, groupId))
-    .limit(1);
-
-  if (groupResults.length === 0) {
-    throw new Error('Study group not found');
-  }
-
-  const group = groupResults[0];
-  const members = group.members || [];
-
-  // Check if user is already a member
-  const existingMember = members.find((m: any) => m.user_id === userId);
-  if (existingMember) {
-    throw new Error('User is already a member of this group');
-  }
-
-  const updatedMembers = [...members, {
-    user_id: userId,
-    role,
-    joined_at: new Date().toISOString()
-  }];
-
-  const result = await db.update(studyGroups)
-    .set({
-      members: updatedMembers,
-      memberCount: updatedMembers.length,
-      updatedAt: new Date()
-    })
-    .where(eq(studyGroups.id, groupId))
-    .returning();
-  return result[0];
-};
-
-export const removeMemberFromStudyGroup = async (groupId: string, userId: string) => {
-  const groupResults = await db.select({ members: studyGroups.members, creatorId: studyGroups.creatorId })
-    .from(studyGroups)
-    .where(eq(studyGroups.id, groupId))
-    .limit(1);
-
-  if (groupResults.length === 0) {
-    throw new Error('Study group not found');
-  }
-
-  const group = groupResults[0];
-
-  // Cannot remove the creator
-  if (group.creatorId === userId) {
-    throw new Error('Cannot remove the group creator');
-  }
-
-  const updatedMembers = group.members.filter((m: any) => m.user_id !== userId);
-
-  const result = await db.update(studyGroups)
-    .set({
-      members: updatedMembers,
-      memberCount: updatedMembers.length,
-      updatedAt: new Date()
-    })
-    .where(eq(studyGroups.id, groupId))
-    .returning();
-  return result[0];
-};
-
-export const findUserStudyGroups = async (userId: string, courseId?: string) => {
-  let whereConditions = [
-    db.raw(`EXISTS (
-      SELECT 1 FROM jsonb_array_elements(members) as member
-      WHERE member->>'user_id' = ?
-    )`, [userId])
-  ];
-
-  if (courseId) {
-    whereConditions.push(eq(studyGroups.courseId, courseId));
-  }
-
-  return await db.select()
-    .from(studyGroups)
-    .where(and(...whereConditions))
-    .orderBy(desc(studyGroups.createdAt));
-};
-
-// Advanced Analytics Functions
-export const getUserLearningProgress = async (userId: string, courseId?: string) => {
-  let query = db.select({
-    courseId: courses.id,
-    courseTitle: courses.title,
-    enrollmentProgress: enrollments.progress,
-    enrollmentStatus: enrollments.status,
-    completedChapters: count(chapters.id),
-    totalChapters: count(chapters.id).filter(),
-    lastActivity: db.raw(`
-      (
-        SELECT MAX(started_at)
-        FROM activity_log
-        WHERE user_id = ? AND course_id = courses.id
-      )
-    `, [userId]),
-    totalStudyTime: db.raw(`
-      (
-        SELECT COALESCE(SUM(duration), 0)
-        FROM activity_log
-        WHERE user_id = ? AND course_id = courses.id
-      )
-    `, [userId]),
-    averageQuizScore: db.raw(`
-      (
-        SELECT COALESCE(AVG(score), 0)
-        FROM quiz_submissions
-        WHERE user_id = ? AND quiz_id IN (
-          SELECT id FROM quizzes WHERE course_id = courses.id
-        )
-      )
-    `, [userId])
-  })
-    .from(courses)
-    .leftJoin(enrollments, and(
-      eq(enrollments.userId, userId),
-      eq(enrollments.courseId, courses.id)
-    ))
-    .leftJoin(chapters, eq(chapters.courseId, courses.id))
-    .groupBy(courses.id, courses.title, enrollments.progress, enrollments.status);
-
-  if (courseId) {
-    query = query.where(eq(courses.id, courseId));
-  } else {
-    query = query.where(eq(enrollments.userId, userId)); // Only show enrolled courses
-  }
-
-  return await query.orderBy(courses.title);
-};
-
-export const getActivityInsights = async (userId: string, days: number = 30) => {
-  const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
-  const activities = await db.select({
-    activityType: activityLog.activityType,
-    duration: activityLog.duration,
-    date: db.raw(`DATE(started_at)`),
-    data: activityLog.data
-  })
-    .from(activityLog)
-    .where(and(
-      eq(activityLog.userId, userId),
-      gte(activityLog.startedAt, cutoffDate)
-    ));
+    .from(chapters)
+    .where(eq(chapters.courseId, courseId))
+    .orderBy(asc(chapters.order));
 
   return {
-    totalActivities: activities.length,
-    totalStudyTime: activities.reduce((sum, act) => sum + (act.duration || 0), 0),
-    averageSessionTime: activities.length > 0
-      ? activities.reduce((sum, act) => sum + (act.duration || 0), 0) / activities.length
-      : 0,
-    dailyStats: activities.reduce((acc, act) => {
-      const date = act.date.toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = { studyTime: 0, activities: 0 };
-      }
-      acc[date].studyTime += act.duration || 0;
-      acc[date].activities += 1;
-      return acc;
-    }, {} as Record<string, { studyTime: number; activities: number }>),
-    activityBreakdown: activities.reduce((acc, act) => {
-      acc[act.activityType] = (acc[act.activityType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
+    ...course,
+    chapters: chaptersWithLessons,
   };
 };
 
-// Data Archival Functions
-export const archiveOldActivities = async (daysOld: number = 365) => {
-  const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+export const getLessonWithQuiz = async (lessonId: string) => {
+  const lesson = await findLessonById(lessonId);
+  if (!lesson) return null;
 
-  // This would be used with a proper archival table
-  return await db.delete(activityLog)
-    .where(lte(activityLog.startedAt, cutoffDate));
-};
+  const quizData = await db.select({
+    quiz: quizzes,
+    questions: db.select({
+      question: questions,
+      answers: db.select().from(answers).where(eq(answers.questionId, questions.id)).orderBy(asc(answers.order)),
+    }).from(questions).where(eq(questions.quizId, quizzes.id)).orderBy(asc(questions.order)),
+  })
+    .from(quizzes)
+    .where(eq(quizzes.lessonId, lessonId))
+    .limit(1);
 
-export const getArchiveStats = async () => {
-  // Placeholder for archival statistics
-  // In a real implementation, this would query the archive tables
   return {
-    archivedActivities: 0,
-    archivedItems: 0,
-    archivedSubmissions: 0,
-    lastArchiveDate: null
+    ...lesson,
+    quiz: quizData[0] || null,
   };
 };
