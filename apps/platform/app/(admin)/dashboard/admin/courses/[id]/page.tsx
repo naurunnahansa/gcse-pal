@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle, ArrowLeft } from 'lucide-react';
-import { MuxVideoPlayer } from '@/components/MuxVideoPlayer';
+import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Edit3, Download, FileJson, AlertCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -30,14 +29,9 @@ interface Lesson {
   title: string;
   description: string;
   content?: string;
-  videoUrl?: string;
-  videoDuration?: number;
   duration: number;
   order: number;
   isPublished: boolean;
-  muxAssetId?: string;
-  muxUploadId?: string;
-  muxStatus?: string;
 }
 
 interface CourseData {
@@ -403,7 +397,6 @@ const EditCoursePage = () => {
         title: lesson.title,
         description: lesson.description,
         content: lesson.content || '',
-        videoUrl: lesson.videoUrl,
         type: 'lesson',
         chapter,
         lesson
@@ -772,7 +765,7 @@ const EditCoursePage = () => {
                                     : 'hover:bg-gray-100 text-gray-600'
                                 }`}
                               >
-                                <Video className="w-3 h-3" />
+                                <FileText className="w-3 h-3" />
                                 <span className="text-sm">{lesson.title || 'Untitled Lesson'}</span>
                               </button>
                             ))}
@@ -833,47 +826,16 @@ const EditCoursePage = () => {
                         </div>
 
                         {content.type === 'lesson' && (
-                          <div className="space-y-6">
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700 mb-2 block">Video Content</Label>
-                              <MuxVideoPlayer
-                                lessonId={content.lesson?.id}
-                                chapterId={selectedPage.chapterId}
-                                courseId={courseId}
-                                videoUrl={content.videoUrl}
-                                muxStatus={content.lesson?.muxStatus}
-                                editable={true}
-                                onVideoUploadStart={() => {
-                                  toast.info('Video upload started', {
-                                    description: 'Your video is being uploaded and processed.'
-                                  });
-                                }}
-                                onVideoUploadComplete={(message) => {
-                                  toast.success('Video uploaded successfully', {
-                                    description: message || 'Your video is being processed.'
-                                  });
-                                  // Refresh the course data to get updated video status
-                                  fetchCourse();
-                                }}
-                                onVideoUploadError={(error) => {
-                                  toast.error('Video upload failed', {
-                                    description: error
-                                  });
-                                }}
-                              />
-                            </div>
-
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Duration (minutes)</Label>
-                              <Input
-                                type="number"
-                                value={content.lesson?.duration || 0}
-                                onChange={(e) => updateSelectedContent('duration', parseInt(e.target.value) || 0)}
-                                placeholder="0"
-                                min="0"
-                                className="mt-1 w-32"
-                              />
-                            </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Duration (minutes)</Label>
+                            <Input
+                              type="number"
+                              value={content.lesson?.duration || 0}
+                              onChange={(e) => updateSelectedContent('duration', parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              min="0"
+                              className="mt-1 w-32"
+                            />
                           </div>
                         )}
 

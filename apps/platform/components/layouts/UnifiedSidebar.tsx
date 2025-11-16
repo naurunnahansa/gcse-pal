@@ -17,9 +17,7 @@ import {
   BarChart3,
   BookOpen,
   Users,
-  Video,
   Settings,
-  FileText,
   ChevronDown,
   ChevronRight,
   Menu,
@@ -27,10 +25,6 @@ import {
   LogOut,
   User,
   TrendingUp,
-  Network,
-  Target,
-  Clock,
-  Award,
   Search,
   Play,
   ChevronLeft,
@@ -52,11 +46,10 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
   // Use actual user role from AuthProvider, fallback to prop for backward compatibility
   const userRole = isAdmin ? 'admin' : 'student';
 
-  
+
   // Prevent hydration mismatch by initializing state in useEffect
   const [mounted, setMounted] = useState(false);
   const [coursesOpen, setCoursesOpen] = useState(false);
-  const [contentOpen, setContentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pathname = usePathname();
@@ -144,18 +137,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
         { name: 'User Analytics', href: '/dashboard/admin/students/analytics', icon: TrendingUp },
       ],
     },
-    {
-      title: 'Content Management',
-      items: [
-        { name: 'Video Library', href: '/dashboard/admin/videos', icon: Video },
-        { name: 'Assessments', href: '/dashboard/admin/assessments', icon: FileText },
-        { name: 'Learning Materials', href: '/dashboard/admin/materials', icon: BookOpen },
-      ],
-      collapsible: true,
-      open: contentOpen,
-      setOpen: setContentOpen,
-    },
-    {
+      {
       title: 'Settings',
       items: [
         { name: 'User Settings', href: '/dashboard/settings', icon: Settings },
