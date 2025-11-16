@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Brain, Award, Users } from "lucide-react";
 
@@ -40,8 +41,16 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           )}
 
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black">
-              <span className="text-lg font-bold text-white">G</span>
+            <div className="flex h-8 w-8 items-center justify-center">
+              <Image
+                src="/badge-logo.png"
+                alt="GCSEPal"
+                width={32}
+                height={32}
+                className="object-contain"
+                quality={100}
+                priority
+              />
             </div>
             <span className="text-xl font-bold text-gray-900">GCSEPal</span>
           </div>

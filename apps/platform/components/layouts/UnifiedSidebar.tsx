@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -149,8 +150,16 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       <div className="flex h-16 items-center justify-between border-b">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''} ${isCollapsed ? 'w-full' : 'gap-2'}`}>
           <Link href={userRole === 'admin' ? '/dashboard/admin/overview' : '/dashboard'} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary crayon-effect">
-              <span className="text-lg font-bold text-primary-foreground">G</span>
+            <div className="flex h-8 w-8 items-center justify-center">
+              <Image
+                src="/badge-logo.png"
+                alt="GCSEPal"
+                width={32}
+                height={32}
+                className="object-contain"
+                quality={100}
+                priority
+              />
             </div>
             {!isCollapsed && (
               <span className="text-xl font-bold">
