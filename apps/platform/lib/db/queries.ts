@@ -1,6 +1,6 @@
 import { db } from './index';
 import { eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte } from 'drizzle-orm';
-import * as schema from './schema-new';
+import * as schema from './schema';
 
 // Re-export db for convenience
 export { db };
@@ -44,7 +44,7 @@ export {
   type NewQuizAttempt,
   type UserAnswer,
   type NewUserAnswer,
-} from './schema-new';
+} from './schema';
 
 // ========================================
 // CORE QUERY HELPERS (Simplified)
