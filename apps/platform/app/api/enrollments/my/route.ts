@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { eq, and, inArray, desc } from 'drizzle-orm';
-import { users, enrollments, courses, chapters, lessons, progress } from '@/lib/db';
+import { users, enrollments, courses, chapters, lessons, lessonProgress } from '@/lib/db';
 
 // GET /api/enrollments/my - Get user's course enrollments with progress
 export async function GET(req: NextRequest) {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     const courseChapters = await db.select()
       .from(chapters)
       .where(inArray(chapters.courseId, enrollmentCourseIds))
-      .orderBy(chapters.order);
+      .orderBy(chapters.position);
 
     // Get lesson counts for chapters
     const chapterIds = courseChapters.map(c => c.id);
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
           id: chapter.id,
           title: chapter.title,
           duration: chapter.duration,
-          order: chapter.order,
+          position: chapter.position,
           lessons: chapterLessons
             .filter(lesson => lesson.chapterId === chapter.id)
             .map(lesson => ({ id: lesson.id }))
@@ -87,10 +87,10 @@ export async function GET(req: NextRequest) {
 
     // Get progress for all user enrollments
     const userProgress = await db.select()
-      .from(progress)
+      .from(lessonProgress)
       .where(and(
-        eq(progress.userId, user.id),
-        inArray(progress.courseId, enrollmentCourseIds)
+        eq(lessonProgress.userId, user.id),
+        inArray(lessonProgress.courseId, enrollmentCourseIds)
       ));
 
     // Calculate progress for each enrollment
@@ -121,10 +121,9 @@ export async function GET(req: NextRequest) {
           description: enrollment.course.description,
           subject: enrollment.course.subject,
           level: enrollment.course.level,
-          thumbnail: enrollment.course.thumbnail,
-          instructor: enrollment.course.instructor,
-          duration: enrollment.course.duration,
-          difficulty: enrollment.course.difficulty,
+          thumbnailUrl: enrollment.course.thumbnailUrl,
+          slug: enrollment.course.slug,
+          status: enrollment.course.status,
           chaptersCount: enrollment.course.chapters.length,
           totalLessons: totalLessons,
         },

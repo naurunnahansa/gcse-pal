@@ -9,7 +9,7 @@ import {
   findCourseById,
   findEnrollment,
   createEnrollment
-} from '@/lib/db/queries';
+} from '@/lib/db';
 import { eq, and, sql } from 'drizzle-orm';
 
 // POST /api/courses/[courseId]/enroll - Enroll user in course
@@ -73,12 +73,7 @@ export async function POST(
       status: 'active',
     });
 
-    // Update course enrollment count
-    await db.update(courses)
-      .set({
-        enrollmentCount: sql`${courses.enrollmentCount} + 1`,
-      })
-      .where(eq(courses.id, courseId));
+    // Note: enrollmentCount is now calculated dynamically, no need to update it
 
     return NextResponse.json({
       success: true,
@@ -140,12 +135,7 @@ export async function DELETE(
         eq(enrollments.courseId, courseId)
       ));
 
-    // Update course enrollment count
-    await db.update(courses)
-      .set({
-        enrollmentCount: sql`${courses.enrollmentCount} - 1`,
-      })
-      .where(eq(courses.id, courseId));
+    // Note: enrollmentCount is now calculated dynamically, no need to update it
 
     return NextResponse.json({
       success: true,
