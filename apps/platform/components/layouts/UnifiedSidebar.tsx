@@ -18,6 +18,7 @@ import {
   BookOpen,
   Users,
   Settings,
+  FileText,
   ChevronDown,
   ChevronRight,
   Menu,
