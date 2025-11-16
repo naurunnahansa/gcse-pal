@@ -102,24 +102,40 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
     },
   ];
 
-  // Admin navigation items (extends student navigation with admin-specific items)
+  // Admin navigation items (includes both admin and student navigation items)
   const adminNavigation = [
     {
-      title: 'Main',
+      title: 'Admin',
       items: [
         { name: 'Admin Overview', href: '/dashboard/admin/overview', icon: BarChart3 },
-        { name: 'Student Dashboard', href: '/dashboard/overview', icon: Home },
       ],
     },
     {
-      title: 'Course Management',
+      title: 'Student View',
       items: [
-        { name: 'All Courses', href: '/dashboard/admin/courses', icon: BookOpen },
+        { name: 'Student Dashboard', href: '/dashboard/overview', icon: Home },
+        { name: 'Progress', href: '/dashboard/progress', icon: TrendingUp },
+      ],
+    },
+    {
+      title: 'Learning & Courses',
+      items: [
+        { name: 'My Courses', href: '/dashboard/learning/courses/my', icon: Play },
+        { name: 'Browse Courses', href: '/dashboard/learning/courses/browse', icon: Search },
+        { name: 'All Courses (Admin)', href: '/dashboard/admin/courses', icon: BookOpen },
         { name: 'Create Course', href: '/dashboard/admin/courses/new', icon: BookOpen },
       ],
       collapsible: true,
       open: coursesOpen,
       setOpen: setCoursesOpen,
+    },
+    {
+      title: 'Learning Tools',
+      items: [
+        { name: 'Study Calendar', href: '/dashboard/tools/calendar', icon: Calendar, comingSoon: true },
+        { name: 'Tasks', href: '/dashboard/tools/tasks', icon: CheckSquare, comingSoon: true },
+        { name: 'Notes', href: '/dashboard/tools/notes', icon: FileText, comingSoon: true },
+      ],
     },
     {
       title: 'User Management',
@@ -140,11 +156,11 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
       setOpen: setContentOpen,
     },
     {
-      title: 'Admin Settings',
+      title: 'Settings',
       items: [
-        { name: 'General Settings', href: '/dashboard/admin/settings', icon: Settings },
-        { name: 'Integrations', href: '/dashboard/admin/settings/integrations', icon: Settings },
         { name: 'User Settings', href: '/dashboard/settings', icon: Settings },
+        { name: 'Admin Settings', href: '/dashboard/admin/settings', icon: Settings },
+        { name: 'Integrations', href: '/dashboard/admin/settings/integrations', icon: Settings },
       ],
       collapsible: true,
       open: settingsOpen,
