@@ -15,4 +15,4 @@ export const db = drizzle(client, { schema });
 
 // Re-export all schema items for convenience
 export * from './schema-new';
-export * from './queries-new';
+export * from './queries';
