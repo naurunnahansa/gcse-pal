@@ -582,10 +582,34 @@ const EditCoursePage = () => {
   }
 
   return (
-    <UnifiedLayout userRole="admin" title={courseData.title || "Edit Course"}>
-      <div className="flex-1 bg-white h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      {/* Simple admin header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Admin
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold">Course Editor</h1>
+              <p className="text-sm text-gray-600">Edit course content and structure</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <a href="/dashboard/admin/overview">Admin Dashboard</a>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/dashboard/admin/courses">Course Management</a>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 bg-white">
         {/* Document-style header with save controls */}
-        <header className="sticky top-0 z-10 bg-white border-b px-8 py-4">
+        <header className="sticky top-0 z-10 bg-white border-b px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <FileText className="w-5 h-5 text-muted-foreground" />
@@ -693,7 +717,7 @@ const EditCoursePage = () => {
         <div className="flex-1 bg-white overflow-hidden">
           {activeTab === 'content' ? (
             <div className="flex h-full">
-              {/* Left sidebar with pages */}
+              {/* Course structure sidebar */}
               <aside className="w-80 border-r border-gray-200 bg-gray-50 overflow-y-auto">
                 <div className="p-4">
                   <div className="mb-4">
@@ -784,7 +808,7 @@ const EditCoursePage = () => {
               </aside>
 
               {/* Main content editor */}
-              <main className="flex-1 p-8 overflow-y-auto">
+              <main className="flex-1 p-6 overflow-y-auto">
                 <div className="max-w-4xl mx-auto">
                   {(() => {
                     const content = getSelectedContent();
@@ -1024,7 +1048,7 @@ const EditCoursePage = () => {
           )}
         </div>
       </div>
-    </UnifiedLayout>
+    </div>
   );
 };
 

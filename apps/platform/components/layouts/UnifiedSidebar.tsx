@@ -40,14 +40,17 @@ import {
 } from 'lucide-react';
 
 interface UnifiedSidebarProps {
-  userRole: 'student' | 'admin';
+  userRole?: 'student' | 'admin';
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
-const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpenChange, isCollapsed, onToggleCollapse }) => {
+const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole, isOpen, onOpenChange, isCollapsed, onToggleCollapse }) => {
+  const { isAdmin } = useAuth();
+  // Use actual user role from AuthProvider, fallback to prop for backward compatibility
+  const userRole = isAdmin ? 'admin' : 'student';
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

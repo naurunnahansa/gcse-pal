@@ -22,8 +22,12 @@ import {
   Award,
   TrendingUp,
   Loader2,
-  Loader,
 } from "lucide-react";
+import {
+  PageHeaderSkeleton,
+  SearchAndFiltersSkeleton,
+  CourseCardSkeleton,
+} from "@/components/ui/loading-skeletons";
 
 const BrowseCourses = () => {
   const { user, isAuthenticated } = useAuth();
@@ -139,76 +143,80 @@ const BrowseCourses = () => {
         <div className="bg-gray-50 flex-1 min-h-[calc(100vh-88px)]">
           <div className="max-w-7xl mx-auto px-6 py-8">
             {/* Search and Filters */}
-            <div className="mb-8 space-y-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search courses, topics, or instructors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                />
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Filters:</span>
+            {loading ? (
+              <SearchAndFiltersSkeleton />
+            ) : (
+              <div className="mb-8 space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search courses, topics, or instructors..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
                 </div>
 
-                <select
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                >
-                  {subjects.map(subject => (
-                    <option key={subject} value={subject}>
-                      {subject === 'all' ? 'All Subjects' : subject}
-                    </option>
-                  ))}
-                </select>
+                {/* Filters */}
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Filters:</span>
+                  </div>
 
-                <select
-                  value={selectedLevel}
-                  onChange={(e) => setSelectedLevel(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                >
-                  {levels.map(level => (
-                    <option key={level} value={level}>
-                      {level === 'all' ? 'All Levels' : level}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={selectedSubject}
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {subjects.map(subject => (
+                      <option key={subject} value={subject}>
+                        {subject === 'all' ? 'All Subjects' : subject}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={selectedLevel}
+                    onChange={(e) => setSelectedLevel(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {levels.map(level => (
+                      <option key={level} value={level}>
+                        {level === 'all' ? 'All Levels' : level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Results Summary */}
-            <div className="mb-6">
-              {loading ? (
-                <p className="text-gray-600">Loading courses...</p>
-              ) : error ? (
-                <div className="text-red-500">
-                  <p>Failed to load courses: {error}</p>
-                  <Button variant="outline" size="sm" onClick={() => fetchCourses()} className="mt-2">
-                    Retry
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-gray-600">
-                  Found <span className="font-semibold">{courses.length}</span> courses
-                </p>
-              )}
-            </div>
+            {!loading && (
+              <div className="mb-6">
+                {error ? (
+                  <div className="text-red-500">
+                    <p>Failed to load courses: {error}</p>
+                    <Button variant="outline" size="sm" onClick={() => fetchCourses()} className="mt-2">
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-gray-600">
+                    Found <span className="font-semibold">{courses.length}</span> courses
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Course Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {loading ? (
-                <div className="col-span-full flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <CourseCardSkeleton key={i} />
+                ))
               ) : courses.length > 0 ? (
                 courses.map((course) => (
                   <Card key={course.id} className="group cursor-pointer transition-all hover:shadow-lg">

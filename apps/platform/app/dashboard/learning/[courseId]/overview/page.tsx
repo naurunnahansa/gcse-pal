@@ -9,6 +9,9 @@ import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/components/AuthProvider';
 import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import {
+  CourseOverviewSkeleton,
+} from '@/components/ui/loading-skeletons';
+import {
   BookOpen,
   Clock,
   Users,
@@ -226,11 +229,8 @@ const CourseOverviewPage = () => {
   if (loading) {
     return (
       <UnifiedLayout userRole="student" title="Loading Course">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading course...</p>
-          </div>
+        <div className="p-6">
+          <CourseOverviewSkeleton />
         </div>
       </UnifiedLayout>
     );

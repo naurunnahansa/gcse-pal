@@ -13,12 +13,16 @@ interface User {
   username?: string;
   primaryEmailAddressId?: string;
   hasImage?: boolean;
+  role?: 'student' | 'admin' | 'teacher';
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAdmin: boolean;
+  isStudent: boolean;
+  isTeacher: boolean;
   signOut: () => Promise<void>;
   updateProfile: (data: { firstName?: string; lastName?: string; username?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
@@ -31,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { isSignedIn, user, isLoaded } = useUser();
   const clerk = useClerk();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [userRole, setUserRole] = useState<'student' | 'admin' | 'teacher' | null>(null);
 
   // Sync user with our database when they sign in
   useEffect(() => {
@@ -51,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             const result = await response.json();
             console.log('User synced successfully:', result.data);
+            // Set user role from database response
+            if (result.data?.role) {
+              setUserRole(result.data.role);
+            }
           }
         } catch (error) {
           console.error('Error syncing user:', error);
@@ -75,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: clerkUser.username,
       primaryEmailAddressId: clerkUser.primaryEmailAddressId,
       hasImage: clerkUser.hasImage,
+      role: userRole,
     };
   };
 
@@ -161,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: updateUser(user),
     isAuthenticated: isSignedIn || false,
     isLoading: !isLoaded || isUpdating,
+    isAdmin: userRole === 'admin',
+    isStudent: userRole === 'student',
+    isTeacher: userRole === 'teacher',
     signOut,
     updateProfile,
     uploadAvatar,

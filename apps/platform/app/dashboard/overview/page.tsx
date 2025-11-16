@@ -9,8 +9,13 @@ import {
   Clock,
   TrendingUp,
   ChevronRight,
-  Loader2,
 } from "lucide-react";
+import {
+  WelcomeHeaderSkeleton,
+  SubjectCardSkeleton,
+  DashboardStatsSkeleton,
+  RecentActivitySkeleton,
+} from "@/components/ui/loading-skeletons";
 import { useAuth } from "@/components/AuthProvider";
 import { useDashboard } from "@/hooks/useDashboard";
 import FloatingChat from "@/components/FloatingChat";
@@ -83,12 +88,16 @@ const DashboardOverview = () => {
       <div className="bg-gray-50 min-h-screen">
         <div className="px-6 py-8">
         {/* Welcome Section */}
-        <div className="mb-12">
-          <h1 className="mb-2 text-4xl font-bold">Welcome back, {user.name}</h1>
-          <p className="text-lg text-muted-foreground">
-            Ready to continue your GCSE preparation?
-          </p>
-        </div>
+        {loading ? (
+          <WelcomeHeaderSkeleton />
+        ) : (
+          <div className="mb-12">
+            <h1 className="mb-2 text-4xl font-bold">Welcome back, {user.name}</h1>
+            <p className="text-lg text-muted-foreground">
+              Ready to continue your GCSE preparation?
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Subject Progress */}
@@ -103,9 +112,9 @@ const DashboardOverview = () => {
 
             <div className="space-y-4">
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <SubjectCardSkeleton key={i} />
+                ))
               ) : subjects.length > 0 ? (
                 subjects.map((subject) => (
                   <Card key={subject.name} className="border-border p-6">
@@ -146,9 +155,7 @@ const DashboardOverview = () => {
               <CardContent className="p-0">
                 <h3 className="mb-4 text-lg font-semibold">This Week</h3>
                 {loading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
+                  <DashboardStatsSkeleton />
                 ) : error ? (
                   <div className="text-center py-4">
                     <p className="text-sm text-red-500">Failed to load stats</p>
@@ -203,9 +210,7 @@ const DashboardOverview = () => {
               <CardContent className="p-0">
                 <h3 className="mb-4 text-lg font-semibold">Recent Activity</h3>
                 {loading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
+                  <RecentActivitySkeleton />
                 ) : recentActivity.length > 0 ? (
                   <div className="space-y-4">
                     {recentActivity.map((activity, index) => (

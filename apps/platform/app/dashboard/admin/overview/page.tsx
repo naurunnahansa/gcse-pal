@@ -33,6 +33,13 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import {
+  AdminStatsSkeleton,
+  AdminQuickActionsSkeleton,
+  AdminCourseListSkeleton,
+  AdminStudentListSkeleton,
+  AdminChartsSkeleton,
+} from "@/components/ui/loading-skeletons";
 
 interface Course {
   id: string;
@@ -146,11 +153,58 @@ const AdminOverview = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading admin dashboard...</p>
+      <div className="p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage courses, students, and platform analytics
+          </p>
         </div>
+
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
+            <AdminStatsSkeleton />
+            <AdminQuickActionsSkeleton />
+            <AdminChartsSkeleton />
+          </TabsContent>
+
+          <TabsContent value="courses" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">All Courses</h2>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+            <AdminCourseListSkeleton />
+          </TabsContent>
+
+          <TabsContent value="students" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Student Management</h2>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            </div>
+            <AdminStudentListSkeleton />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Platform Analytics</h2>
+              <Skeleton className="h-10 w-32" />
+            </div>
+            <AdminChartsSkeleton />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }

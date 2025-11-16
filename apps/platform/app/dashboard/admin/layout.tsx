@@ -1,4 +1,5 @@
 import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
+import { AdminProtection } from "@/components/AdminProtection";
 
 export default function AdminDashboardLayout({
   children,
@@ -6,8 +7,10 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <UnifiedLayout userRole="admin">
-      {children}
-    </UnifiedLayout>
+    <AdminProtection>
+      <UnifiedLayout userRole="admin">
+        {children}
+      </UnifiedLayout>
+    </AdminProtection>
   );
 }

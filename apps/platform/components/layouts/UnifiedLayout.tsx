@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { UnifiedSidebar } from './UnifiedSidebar';
+import { useAuth } from '@/components/AuthProvider';
 import { Home, Settings, BookOpen, Brain, MessageCircle } from 'lucide-react';
 
 interface ModeOption {
@@ -16,7 +17,7 @@ interface ModeOption {
 
 interface UnifiedLayoutProps {
   children: React.ReactNode;
-  userRole: 'student' | 'admin';
+  userRole?: 'student' | 'admin';
   title?: string;
   subjectName?: string;
   modeOptions?: ModeOption[];
@@ -45,6 +46,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { isAdmin } = useAuth();
 
   // Determine page title based on current route
   const getPageTitle = () => {
@@ -73,7 +75,6 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
       <UnifiedSidebar
-        userRole={userRole}
         isOpen={sidebarOpen}
         onOpenChange={setSidebarOpen}
         isCollapsed={sidebarCollapsed}
@@ -174,21 +175,14 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
             )}
 
             {/* Quick navigation between admin and student dashboards */}
-            {userRole === 'admin' ? (
+            {isAdmin ? (
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/dashboard">
                   <Home className="mr-2 h-4 w-4" />
                   Student Dashboard
                 </Link>
               </Button>
-            ) : (
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/admin">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Admin Panel
-                </Link>
-              </Button>
-            )}
+            ) : null}
           </div>
         </header>
 

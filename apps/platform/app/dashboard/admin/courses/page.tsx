@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
+  SearchAndFiltersSkeleton,
+  AdminCourseListSkeleton,
+} from "@/components/ui/loading-skeletons";
+import {
   Plus,
   Edit3,
   Trash2,
@@ -201,10 +205,21 @@ const CourseManagement = () => {
   // Show loading state while fetching courses
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading courses...</p>
+      <div className="min-h-screen p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Course Management</h1>
+            <p className="text-muted-foreground">
+              Manage and monitor all platform courses
+            </p>
+          </div>
+
+          {/* Search and Filters */}
+          <SearchAndFiltersSkeleton />
+
+          {/* Course List */}
+          <AdminCourseListSkeleton />
         </div>
       </div>
     );

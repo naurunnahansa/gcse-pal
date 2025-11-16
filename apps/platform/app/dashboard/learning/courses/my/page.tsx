@@ -24,6 +24,11 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
+import {
+  CourseStatsSkeleton,
+  SearchAndFiltersSkeleton,
+  MyCourseCardSkeleton,
+} from "@/components/ui/loading-skeletons";
 
 const MyCourses = () => {
   const { user, isAuthenticated } = useAuth();
@@ -103,17 +108,7 @@ const MyCourses = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading your courses...</p>
-        </div>
-      </div>
-    );
-  }
-
+  
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -167,116 +162,129 @@ const MyCourses = () => {
         <div className="bg-gray-50 flex-1 min-h-[calc(100vh-88px)]">
           <div className="max-w-7xl mx-auto px-6 py-8">
             {/* Statistics Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <BookOpen className="h-5 w-5 text-blue-600" />
+            {loading ? (
+              <CourseStatsSkeleton />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <BookOpen className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{overallStats.totalCourses}</p>
+                        <p className="text-sm text-gray-600">Total Courses</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">{overallStats.totalCourses}</p>
-                      <p className="text-sm text-gray-600">Total Courses</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{overallStats.completedCourses}</p>
+                        <p className="text-sm text-gray-600">Completed</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">{overallStats.completedCourses}</p>
-                      <p className="text-sm text-gray-600">Completed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{overallStats.averageProgress}%</p>
+                        <p className="text-sm text-gray-600">Avg Progress</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">{overallStats.averageProgress}%</p>
-                      <p className="text-sm text-gray-600">Avg Progress</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Clock className="h-5 w-5 text-purple-600" />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Clock className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{Math.round(overallStats.totalTimeSpent)}</p>
+                        <p className="text-sm text-gray-600">Hours Learned</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">{Math.round(overallStats.totalTimeSpent)}</p>
-                      <p className="text-sm text-gray-600">Hours Learned</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <Award className="h-5 w-5 text-yellow-600" />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-yellow-100 rounded-lg">
+                        <Award className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{overallStats.totalAchievements}</p>
+                        <p className="text-sm text-gray-600">Achievements</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-2xl font-bold">{overallStats.totalAchievements}</p>
-                      <p className="text-sm text-gray-600">Achievements</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Search and Filters */}
-            <div className="mb-8 space-y-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search your courses..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Status:</span>
+            {loading ? (
+              <SearchAndFiltersSkeleton />
+            ) : (
+              <div className="mb-8 space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search your courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
                 </div>
 
-                {statusOptions.map(status => (
-                  <Button
-                    key={status}
-                    variant={selectedStatus === status ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedStatus(status)}
-                    className={selectedStatus === status ? "bg-black" : ""}
-                  >
-                    {status === 'all' ? 'All Courses' : getStatusText(status)}
-                  </Button>
-                ))}
+                {/* Status Filter */}
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Status:</span>
+                  </div>
+
+                  {statusOptions.map(status => (
+                    <Button
+                      key={status}
+                      variant={selectedStatus === status ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedStatus(status)}
+                      className={selectedStatus === status ? "bg-black" : ""}
+                    >
+                      {status === 'all' ? 'All Courses' : getStatusText(status)}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Course Grid */}
             <div className="grid gap-6 lg:grid-cols-2">
-              {filteredCourses.map((enrollment) => (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <MyCourseCardSkeleton key={i} />
+                ))
+              ) : (
+                filteredCourses.map((enrollment) => (
                 <Card key={enrollment.id} className="group">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -355,7 +363,8 @@ const MyCourses = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
 
             {/* No Courses Found */}

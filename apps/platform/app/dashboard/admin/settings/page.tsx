@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import {
   Settings,
   Shield,
@@ -22,6 +23,7 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -34,67 +36,31 @@ const AdminSettingsPage = () => {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-          <p className="text-muted-foreground mb-4">Please sign in to access admin settings.</p>
-          <Button asChild>
-            <a href="/auth/signin">Sign In</a>
-          </Button>
+      <UnifiedLayout userRole="admin" title="Authentication Required">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
+            <p className="text-muted-foreground mb-4">Please sign in to access admin settings.</p>
+            <Button asChild>
+              <a href="/auth/signin">Sign In</a>
+            </Button>
+          </div>
         </div>
-      </div>
+      </UnifiedLayout>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
-        <p className="text-muted-foreground">
-          Manage platform settings and configurations
-        </p>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Settings Navigation */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <nav className="space-y-1">
-                <Button variant="ghost" className="w-full justify-start">
-                  <Settings className="mr-2 h-4 w-4" />
-                  General
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Users className="mr-2 h-4 w-4" />
-                  User Management
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifications
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Security
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Database className="mr-2 h-4 w-4" />
-                  Data & Backup
-                </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                  <Globe className="mr-2 h-4 w-4" />
-                  Platform
-                </Button>
-              </nav>
-            </CardContent>
-          </Card>
+    <UnifiedLayout userRole="admin" title="Admin Settings">
+      <div className="p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
+          <p className="text-muted-foreground">
+            Manage platform settings and configurations
+          </p>
         </div>
 
-        {/* Settings Content */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="max-w-4xl space-y-8">
           {/* General Settings */}
           <Card>
             <CardHeader>
@@ -317,7 +283,7 @@ const AdminSettingsPage = () => {
           </Card>
         </div>
       </div>
-    </div>
+    </UnifiedLayout>
   );
 };
 
