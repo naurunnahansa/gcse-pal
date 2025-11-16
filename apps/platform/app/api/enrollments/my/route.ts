@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
+import { db, users, enrollments, courses, chapters, lessons, lessonProgress } from '@/lib/db/queries';
 import { eq, and, inArray, desc } from 'drizzle-orm';
-import { users, enrollments, courses, chapters, lessons, lessonProgress } from '@/lib/db';
 
 // GET /api/enrollments/my - Get user's course enrollments with progress
 export async function GET(req: NextRequest) {
@@ -37,6 +36,23 @@ export async function GET(req: NextRequest) {
 
     // Get course details for all enrollments
     const enrollmentCourseIds = userEnrollments.map(e => e.courseId);
+
+    // Handle case where user has no enrollments
+    if (enrollmentCourseIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          enrollments: [],
+          statistics: {
+            totalEnrollments: 0,
+            completedCourses: 0,
+            inProgressCourses: 0,
+            averageProgress: 0,
+          },
+        },
+      });
+    }
+
     const enrolledCourses = await db.select()
       .from(courses)
       .where(inArray(courses.id, enrollmentCourseIds));
@@ -49,9 +65,9 @@ export async function GET(req: NextRequest) {
 
     // Get lesson counts for chapters
     const chapterIds = courseChapters.map(c => c.id);
-    const chapterLessons = await db.select()
+    const chapterLessons = chapterIds.length > 0 ? await db.select()
       .from(lessons)
-      .where(inArray(lessons.chapterId, chapterIds));
+      .where(inArray(lessons.chapterId, chapterIds)) : [];
 
     // Combine the data to match the original structure
     const enrollmentData = userEnrollments.map(enrollment => {
@@ -86,12 +102,12 @@ export async function GET(req: NextRequest) {
     }).filter(Boolean); // Remove any null entries
 
     // Get progress for all user enrollments
-    const userProgress = await db.select()
+    const userProgress = enrollmentCourseIds.length > 0 ? await db.select()
       .from(lessonProgress)
       .where(and(
         eq(lessonProgress.userId, user.id),
         inArray(lessonProgress.courseId, enrollmentCourseIds)
-      ));
+      )) : [];
 
     // Calculate progress for each enrollment
     const formattedEnrollments = enrollmentData.map(enrollment => {
@@ -121,9 +137,10 @@ export async function GET(req: NextRequest) {
           description: enrollment.course.description,
           subject: enrollment.course.subject,
           level: enrollment.course.level,
-          thumbnailUrl: enrollment.course.thumbnailUrl,
-          slug: enrollment.course.slug,
-          status: enrollment.course.status,
+          thumbnail: enrollment.course.thumbnailUrl,
+          instructor: enrollment.course.instructor || 'GCSE Pal Team',
+          duration: enrollment.course.chapters.reduce((sum, chapter) => sum + (chapter.duration || 0), 0),
+          difficulty: enrollment.course.difficulty || 'intermediate',
           chaptersCount: enrollment.course.chapters.length,
           totalLessons: totalLessons,
         },

@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { db, users, userSettings } from './db/queries';
+import { db, users } from './db/queries';
 import { eq } from 'drizzle-orm';
 
 export interface ClerkUser {
@@ -44,20 +44,7 @@ export async function ensureUserExists(userId?: string): Promise<ClerkUser> {
 
       const user = newUsers[0];
 
-      // Create user settings with defaults
-      await db.insert(userSettings)
-        .values({
-          userId: user.id,
-          dailyGoal: 60, // 60 minutes per day
-          emailNotifications: true,
-          pushNotifications: true,
-          studyReminders: true,
-          deadlineReminders: true,
-          preferredStudyTime: 'evening',
-          studyDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday-Friday
-          theme: 'light',
-        });
-
+      // Note: userSettings table removed during schema simplification
       console.log(`Created user: ${user.id} for Clerk ID: ${userId}`);
 
       return {

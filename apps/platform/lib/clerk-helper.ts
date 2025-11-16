@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 /**
  * Get the current authenticated user from Clerk
+ *
  */
 export async function getAuthenticatedUser() {
   try {
@@ -119,15 +120,9 @@ export async function getDbUserFromClerkId(clerkUserId: string) {
 
     const user = userResults[0];
 
-    // Get user settings
-    const settingsResults = await db.select()
-      .from(userSettings)
-      .where(eq(userSettings.userId, user.id))
-      .limit(1);
-
     return {
       ...user,
-      userSettings: settingsResults[0] || null,
+      // Note: userSettings removed during schema simplification
     };
   } catch (error) {
     console.error('Error getting database user:', error);

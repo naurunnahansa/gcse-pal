@@ -13,7 +13,7 @@ import {
   countCourses,
   createUser,
   createCourseWithSlug
-} from '@/lib/db';
+} from '@/lib/db/queries';
 import { eq, and, or, desc, asc, count as drizzleCount, inArray } from 'drizzle-orm';
 import { ensureUserExists } from '@/lib/clerk-helper';
 
@@ -67,20 +67,26 @@ export async function GET(req: NextRequest) {
 
         const enrollmentCount = enrollmentCountResult[0]?.count || 0;
 
+        // Calculate total duration from chapters
+        const totalDuration = courseChapters.reduce((sum, chapter) => sum + (chapter.duration || 0), 0);
+
         return {
           id: course.id,
           title: course.title,
           description: course.description,
           subject: course.subject,
           level: course.level,
-          thumbnailUrl: course.thumbnailUrl,
-          slug: course.slug,
+          thumbnail: course.thumbnailUrl,
+          instructor: course.instructor || 'GCSE Pal Team',
+          duration: totalDuration,
+          difficulty: course.difficulty || 'intermediate',
+          topics: [], // Topics not in schema yet, could be derived from tags/keywords
           enrollmentCount,
+          rating: 0, // Rating system not implemented yet
+          price: 0, // All courses free for now
           chaptersCount: courseChapters.length,
           chapters: courseChapters,
-          status: course.status,
           createdAt: course.createdAt,
-          updatedAt: course.updatedAt,
         };
       })
     );

@@ -646,10 +646,7 @@ export const getUserCourseStats = async (userId: string) => {
   })
     .from(enrollments)
     .innerJoin(courses, eq(enrollments.courseId, courses.id))
-    .leftJoin(courseProgress, and(
-      eq(courseProgress.userId, userId),
-      eq(courseProgress.courseId, courses.id)
-    ))
+    .leftJoin(courseProgress, eq(courseProgress.enrollmentId, enrollments.id))
     .where(eq(enrollments.userId, userId));
 
   return enrollmentsData.map(({ course, enrollment, courseProgress }) => ({
@@ -698,6 +695,297 @@ export const getQuizPerformanceStats = async (userId: string, courseId?: string)
     totalTimeSpent,
     recentAttempts: attempts.slice(0, 10),
   };
+};
+
+// Progress Analytics Functions
+export const getUserActivityStats = async (userId: string) => {
+  const userEnrollments = await db.select({
+    course,
+    enrollment,
+    courseProgress,
+  })
+    .from(enrollments)
+    .innerJoin(courses, eq(enrollments.courseId, courses.id))
+    .leftJoin(courseProgress, and(
+      eq(courseProgress.userId, userId),
+      eq(courseProgress.courseId, courses.id)
+    ))
+    .where(eq(enrollments.userId, userId));
+
+  const userLessons = await db.select({
+    lesson,
+    chapter,
+    course,
+    progress: lessonProgress,
+  })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+    .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+    .innerJoin(courses, eq(chapters.courseId, courses.id))
+    .where(eq(lessonProgress.userId, userId));
+
+  const userQuizzes = await db.select({
+    quizAttempt: quizAttempts,
+    quiz,
+    course,
+  })
+    .from(quizAttempts)
+    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+    .innerJoin(courses, eq(quizzes.courseId, courses.id))
+    .where(eq(quizAttempts.userId, userId));
+
+  // Calculate stats
+  const totalTimeSpentSeconds = userLessons.reduce((sum, { progress }) => sum + (progress.timeSpentSeconds || 0), 0);
+  const completedLessons = userLessons.filter(({ progress }) => progress.status === 'completed').length;
+  const totalLessons = userLessons.length;
+  const passedQuizzes = userQuizzes.filter(({ quizAttempt }) => quizAttempt.passed).length;
+  const totalQuizzes = userQuizzes.length;
+  const averageQuizScore = userQuizzes.length > 0
+    ? userQuizzes.reduce((sum, { quizAttempt }) => sum + quizAttempt.score, 0) / userQuizzes.length
+    : 0;
+
+  // Calculate study streak (consecutive days with activity)
+  const activityDates = new Set(
+    userLessons
+      .filter(({ progress }) => progress.completedAt)
+      .map(({ progress }) => progress.completedAt!.toISOString().split('T')[0])
+      .concat(
+        userQuizzes.map(({ quizAttempt }) => quizAttempt.createdAt.toISOString().split('T')[0])
+      )
+  );
+
+  const sortedDates = Array.from(activityDates).sort();
+  let currentStreak = 0;
+  let maxStreak = 0;
+
+  for (let i = sortedDates.length - 1; i >= 0; i--) {
+    const currentDate = new Date(sortedDates[i]);
+    const nextDate = i < sortedDates.length - 1 ? new Date(sortedDates[i + 1]) : null;
+
+    if (!nextDate || Math.floor((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) === 1) {
+      currentStreak++;
+      maxStreak = Math.max(maxStreak, currentStreak);
+    } else {
+      break;
+    }
+  }
+
+  return {
+    totalCourses: userEnrollments.length,
+    totalTimeSpentSeconds,
+    totalTimeSpentHours: Math.round(totalTimeSpentSeconds / 3600 * 10) / 10,
+    completedLessons,
+    totalLessons,
+    passedQuizzes,
+    totalQuizzes,
+    averageQuizScore: Math.round(averageQuizScore * 10) / 10,
+    currentStreak,
+    maxStreak,
+    overallProgress: userEnrollments.length > 0
+      ? Math.round(userEnrollments.reduce((sum, { courseProgress }) => sum + (courseProgress?.progressPercent || 0), 0) / userEnrollments.length)
+      : 0,
+  };
+};
+
+export const getUserLearningProgress = async (userId: string, courseId?: string) => {
+  const enrollmentsQuery = db.select({
+    course,
+    enrollment,
+    courseProgress,
+    lessons: db.select({ count: count() })
+      .from(lessons)
+      .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+      .where(eq(chapters.courseId, courses.id))
+      .as('lessonCount'),
+    completedLessons: db.select({ count: count() })
+      .from(lessonProgress)
+      .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+      .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+      .where(and(
+        eq(chapters.courseId, courses.id),
+        eq(lessonProgress.userId, userId),
+        eq(lessonProgress.status, 'completed')
+      ))
+      .as('completedLessonCount'),
+  })
+    .from(enrollments)
+    .innerJoin(courses, eq(enrollments.courseId, courses.id))
+    .leftJoin(courseProgress, and(
+      eq(courseProgress.userId, userId),
+      eq(courseProgress.courseId, courses.id)
+    ))
+    .where(eq(enrollments.userId, userId));
+
+  if (courseId) {
+    enrollmentsQuery.where(eq(courses.id, courseId));
+  }
+
+  const courseData = await enrollmentsQuery;
+
+  return courseData.map(({ course, enrollment, courseProgress, lessons, completedLessons }) => ({
+    course,
+    enrollment,
+    progress: courseProgress,
+    totalLessons: lessons.count || 0,
+    completedLessons: completedLessons.count || 0,
+    progressPercent: courseProgress?.progressPercent || 0,
+    lessonsCompleted: courseProgress?.lessonsCompleted || 0,
+    quizzesPassed: courseProgress?.quizzesPassed || 0,
+    status: enrollment.status,
+  }));
+};
+
+export const getQuizStats = async (userId: string) => {
+  const quizData = await db.select({
+    quizAttempt: quizAttempts,
+    quiz,
+    course,
+  })
+    .from(quizAttempts)
+    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+    .innerJoin(courses, eq(quizzes.courseId, courses.id))
+    .where(eq(quizAttempts.userId, userId))
+    .orderBy(desc(quizAttempts.createdAt));
+
+  const totalQuizzes = quizData.length;
+  const passedQuizzes = quizData.filter(({ quizAttempt }) => quizAttempt.passed).length;
+  const averageScore = totalQuizzes > 0
+    ? quizData.reduce((sum, { quizAttempt }) => sum + quizAttempt.score, 0) / totalQuizzes
+    : 0;
+  const totalTimeSpent = quizData.reduce((sum, { quizAttempt }) => sum + (quizAttempt.timeSpent || 0), 0);
+
+  return {
+    totalQuizzes,
+    passedQuizzes,
+    passRate: totalQuizzes > 0 ? Math.round((passedQuizzes / totalQuizzes) * 100) : 0,
+    averageScore: Math.round(averageScore * 10) / 10,
+    totalTimeSpentMinutes: Math.round(totalTimeSpent / 60 * 10) / 10,
+    recentQuizzes: quizData.slice(0, 10),
+  };
+};
+
+export const getWeeklyActivity = async (userId: string) => {
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const weeklyLessons = await db.select({
+    lesson,
+    chapter,
+    course,
+    progress: lessonProgress,
+  })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+    .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+    .innerJoin(courses, eq(chapters.courseId, courses.id))
+    .where(and(
+      eq(lessonProgress.userId, userId),
+      gte(lessonProgress.createdAt, oneWeekAgo)
+    ));
+
+  const weeklyQuizzes = await db.select({
+    quizAttempt: quizAttempts,
+    quiz,
+    course,
+  })
+    .from(quizAttempts)
+    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+    .innerJoin(courses, eq(quizzes.courseId, courses.id))
+    .where(and(
+      eq(quizAttempts.userId, userId),
+      gte(quizAttempts.createdAt, oneWeekAgo)
+    ));
+
+  const totalTimeSpent = weeklyLessons.reduce((sum, { progress }) => sum + (progress.timeSpentSeconds || 0), 0);
+  const completedLessons = weeklyLessons.filter(({ progress }) => progress.status === 'completed').length;
+  const totalQuestionsAnswered = weeklyQuizzes.reduce((sum, { quizAttempt }) => sum + (quizAttempt.questionsAnswered || 0), 0);
+
+  // Group by day for activity heatmap
+  const dailyActivity = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+
+    const dayLessons = weeklyLessons.filter(({ progress }) =>
+      progress.createdAt.toISOString().split('T')[0] === dateStr
+    ).length;
+
+    const dayQuizzes = weeklyQuizzes.filter(({ quizAttempt }) =>
+      quizAttempt.createdAt.toISOString().split('T')[0] === dateStr
+    ).length;
+
+    dailyActivity.push({
+      date: dateStr,
+      lessons: dayLessons,
+      quizzes: dayQuizzes,
+      total: dayLessons + dayQuizzes,
+    });
+  }
+
+  return {
+    totalTimeSpentMinutes: Math.round(totalTimeSpent / 60 * 10) / 10,
+    totalTimeSpentHours: Math.round(totalTimeSpent / 3600 * 10) / 10,
+    completedLessons,
+    totalLessons: weeklyLessons.length,
+    totalQuizzes: weeklyQuizzes.length,
+    totalQuestionsAnswered,
+    dailyActivity: dailyActivity.reverse(),
+  };
+};
+
+export const getRecentProgress = async (userId: string) => {
+  const recentLessons = await db.select({
+    lesson,
+    chapter,
+    course,
+    progress: lessonProgress,
+  })
+    .from(lessonProgress)
+    .innerJoin(lessons, eq(lessonProgress.lessonId, lessons.id))
+    .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+    .innerJoin(courses, eq(chapters.courseId, courses.id))
+    .where(and(
+      eq(lessonProgress.userId, userId),
+      eq(lessonProgress.status, 'completed')
+    ))
+    .orderBy(desc(lessonProgress.completedAt))
+    .limit(10);
+
+  const recentQuizzes = await db.select({
+    quizAttempt: quizAttempts,
+    quiz,
+    course,
+  })
+    .from(quizAttempts)
+    .innerJoin(quizzes, eq(quizAttempts.quizId, quizzes.id))
+    .innerJoin(courses, eq(quizzes.courseId, courses.id))
+    .where(eq(quizAttempts.userId, userId))
+    .orderBy(desc(quizAttempts.createdAt))
+    .limit(10);
+
+  // Combine and sort by date
+  const achievements = [
+    ...recentLessons.map(({ lesson, chapter, course, progress }) => ({
+      type: 'lesson',
+      title: `Completed: ${lesson.title}`,
+      description: `${course.title} - ${chapter.title}`,
+      date: progress.completedAt || progress.createdAt,
+      icon: 'BookOpen',
+      score: null,
+    })),
+    ...recentQuizzes.map(({ quizAttempt, quiz, course }) => ({
+      type: 'quiz',
+      title: quizAttempt.passed ? `Quiz Passed: ${quiz.title}` : `Quiz Attempted: ${quiz.title}`,
+      description: `${course.title} - Score: ${Math.round(quizAttempt.score)}%`,
+      date: quizAttempt.createdAt,
+      icon: 'Award',
+      score: Math.round(quizAttempt.score),
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+   .slice(0, 10);
+
+  return achievements;
 };
 
 // ========================================
