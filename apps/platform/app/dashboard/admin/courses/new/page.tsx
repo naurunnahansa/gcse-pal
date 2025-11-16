@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import { useAuth } from '@/components/AuthProvider';
 
 interface Chapter {
@@ -512,8 +511,7 @@ export default function CreateCoursePage() {
   }
 
   return (
-    <UnifiedLayout userRole="admin" title={courseData.title || "New Course"}>
-      <div className="flex-1 bg-white h-screen flex flex-col">
+    <div className="flex-1 bg-white h-screen flex flex-col">
         {/* Document-style header with save controls */}
         <header className="sticky top-0 z-10 bg-white border-b px-8 py-4">
           <div className="flex items-center justify-between">
@@ -1034,6 +1032,5 @@ export default function CreateCoursePage() {
           )}
         </div>
       </div>
-    </UnifiedLayout>
   );
 }

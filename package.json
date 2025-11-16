@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "shadcn": "^3.5.0",
+    "tsx": "^4.20.6",
     "turbo": "^2.0.0"
   },
   "packageManager": "pnpm@8.15.0",

@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
       .where(eq(users.role, 'teacher'))
       .then(result => result[0]?.count || 0);
 
-    const avgCompletionRate = await db.select({ average: avg(enrollments.progress) })
+    const avgCompletionRateResult = await db.select({ average: avg(enrollments.progress) })
       .from(enrollments)
       .then(result => result[0]?.average || 0);
 
@@ -127,9 +127,11 @@ export async function GET(req: NextRequest) {
       .orderBy(desc(users.createdAt))
       .limit(10);
 
-    // Get enrollment data for these students
+    // Get enrollment data for these students with null checks
     const formattedStudents = await Promise.all(
-      recentStudentsData.map(async (student) => {
+      (recentStudentsData || []).map(async (student) => {
+        if (!student) return null;
+
         const studentEnrollments = await db.select({
           progress: enrollments.progress,
           enrolledAt: enrollments.enrolledAt,
@@ -142,19 +144,19 @@ export async function GET(req: NextRequest) {
           .orderBy(desc(enrollments.enrolledAt))
           .limit(1);
 
-        const enrollment = studentEnrollments[0];
+        const enrollment = studentEnrollments?.[0];
         return {
           id: student.id,
-          name: student.name,
-          email: student.email,
-          enrolled: studentEnrollments.length,
+          name: student.name || 'Unknown Student',
+          email: student.email || '',
+          enrolled: studentEnrollments?.length || 0,
           progress: enrollment?.progress || 0,
           lastActive: enrollment?.lastActivityAt
             ? formatLastActive(enrollment.lastActivityAt)
             : 'Never'
         };
       })
-    );
+    ).filter(Boolean); // Remove any null entries
 
     // Get chapter counts for courses
     const courseIds = courseStats.map(course => course.id);
@@ -182,29 +184,31 @@ export async function GET(req: NextRequest) {
         .groupBy(enrollments.courseId)
       : [];
 
-    // Format course data
-    const formattedCourses = courseStats.map(course => {
-      const chapterCount = chapterCounts.find(cc => cc.courseId === course.id)?.count || 0;
-      const enrollmentCount = enrollmentCounts.find(ec => ec.courseId === course.id)?.count || 0;
+    // Format course data with null checks
+    const formattedCourses = (courseStats || []).map(course => {
+      if (!course) return null;
+
+      const chapterCount = chapterCounts?.find(cc => cc.courseId === course.id)?.count || 0;
+      const enrollmentCount = enrollmentCounts?.find(ec => ec.courseId === course.id)?.count || 0;
 
       return {
         id: course.id,
-        title: course.title,
-        description: course.description,
-        subject: course.subject,
-        difficulty: course.difficulty,
-        status: course.status,
+        title: course.title || 'Untitled Course',
+        description: course.description || '',
+        subject: course.subject || 'Unknown',
+        difficulty: course.difficulty || 'Beginner',
+        status: course.status || 'draft',
         students: enrollmentCount,
         avgScore: course.rating || 0,
         completion: Math.round(Math.random() * 100), // TODO: Calculate actual completion rate
-        author: course.instructor,
-        createdAt: course.createdAt.toISOString().split('T')[0],
-        duration: course.duration,
+        author: course.instructor || 'Unknown',
+        createdAt: course.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+        duration: course.duration || 0,
         thumbnail: course.thumbnail,
-        level: course.level,
+        level: course.level || 'Beginner',
         chaptersCount: chapterCount
       };
-    });
+    }).filter(Boolean); // Remove any null entries
 
     // Platform statistics
     const platformStats = [
@@ -224,7 +228,7 @@ export async function GET(req: NextRequest) {
       },
       {
         title: "Avg Completion",
-        value: `${Math.round(avgCompletionRate._avg.progress || 0)}%`,
+        value: `${Math.round(avgCompletionRateResult || 0)}%`,
         change: "+5%",
         icon: "Target",
         color: "text-purple-600"
@@ -238,23 +242,26 @@ export async function GET(req: NextRequest) {
       }
     ];
 
+    // Ensure all data is properly structured and not null/undefined
+    const responseData = {
+      platformStats: platformStats || [],
+      courses: formattedCourses || [],
+      students: formattedStudents || [],
+      summary: {
+        totalUsers: totalUsers || 0,
+        totalCourses: totalCourses || 0,
+        publishedCourses: publishedCourses || 0,
+        totalEnrollments: totalEnrollments || 0,
+        activeCourses: activeCoursesData || 0,
+        recentEnrollments: recentEnrollments || 0,
+        avgCompletionRate: Math.round(avgCompletionRateResult || 0),
+        totalStudyTime: 0
+      }
+    };
+
     return NextResponse.json({
       success: true,
-      data: {
-        platformStats,
-        courses: formattedCourses,
-        students: formattedStudents,
-        summary: {
-          totalUsers,
-          totalCourses,
-          publishedCourses,
-          totalEnrollments,
-          activeCourses: activeCoursesData,
-          recentEnrollments,
-          avgCompletionRate: Math.round(avgCompletionRate),
-          totalStudyTime: 0 // Would need implementation using lessonProgress.timeSpentSeconds
-        }
-      }
+      data: responseData
     });
 
   } catch (error) {

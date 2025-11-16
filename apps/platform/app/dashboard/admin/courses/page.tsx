@@ -241,10 +241,9 @@ const CourseManagement = () => {
 
   return (
     <>
-      <div className="flex-1 bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+      <div className="p-6">
+          {/* Page Actions */}
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
               <p className="text-gray-600 mt-1">Create and manage your GCSE courses</p>
@@ -262,9 +261,6 @@ const CourseManagement = () => {
               </Button>
             </div>
           </div>
-        </div>
-
-        <div className="p-6">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card>
@@ -489,7 +485,6 @@ const CourseManagement = () => {
             </Card>
           )}
         </div>
-      </div>
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog

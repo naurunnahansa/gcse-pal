@@ -6,17 +6,34 @@ import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('🔐 Sync endpoint called');
+
     // Get authenticated user from Clerk
+    const startTime = Date.now();
     const clerkUser = await getAuthenticatedUser();
+    const clerkTime = Date.now();
+
+    console.log('🕐 Clerk auth time:', clerkTime - startTime, 'ms');
+
     if (!clerkUser) {
+      console.log('❌ No authenticated user found');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
+    console.log('✅ User authenticated:', clerkUser.email);
+    console.log('🔄 Starting database sync...');
+
     // Sync user with database using Clerk data
     const user = await syncUserWithDatabase(clerkUser.userId);
+    const dbTime = Date.now();
+
+    console.log('🕐 DB sync time:', dbTime - clerkTime, 'ms');
+
+    const totalTime = Date.now() - startTime;
+    console.log('🕐 Total sync time:', totalTime, 'ms');
 
     return NextResponse.json({
       success: true,
@@ -28,6 +45,11 @@ export async function POST(req: NextRequest) {
         avatar: user.avatar,
         role: user.role,
         username: clerkUser.username,
+        timing: {
+          clerkAuth: clerkTime - startTime,
+          dbSync: dbTime - clerkTime,
+          total: totalTime,
+        },
       },
     });
   } catch (error) {

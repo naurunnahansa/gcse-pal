@@ -60,12 +60,15 @@ export async function syncUserWithDatabase(clerkUserId: string) {
 
     let user;
     if (existingUser.length > 0) {
-      // Update existing user
+      // Update existing user, preserving their role
+      const currentUser = existingUser[0];
       const updatedUsers = await db.update(users)
         .set({
           email,
           name,
           avatar,
+          // Preserve existing role - don't override it during sync
+          role: currentUser.role,
           updatedAt: new Date(),
         })
         .where(eq(users.clerkId, clerkUserId))

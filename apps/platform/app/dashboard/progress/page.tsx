@@ -189,9 +189,12 @@ const ProgressPage = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">No Progress Data</h1>
           <p className="text-muted-foreground mb-4">Start studying to see your progress here.</p>
-          <Button asChild>
-            <a href="/dashboard">Go to Dashboard</a>
-          </Button>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={fetchProgressData} variant="outline">Refresh</Button>
+            <Button asChild>
+              <a href="/dashboard">Browse Courses</a>
+            </Button>
+          </div>
         </div>
       </div>
     );

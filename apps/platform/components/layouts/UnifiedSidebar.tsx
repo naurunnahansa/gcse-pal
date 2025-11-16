@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -48,14 +48,22 @@ interface UnifiedSidebarProps {
 }
 
 const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole, isOpen, onOpenChange, isCollapsed, onToggleCollapse }) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isStudent, user: authUser, isAuthenticated, isLoading } = useAuth();
   // Use actual user role from AuthProvider, fallback to prop for backward compatibility
   const userRole = isAdmin ? 'admin' : 'student';
+
+  
+  // Prevent hydration mismatch by initializing state in useEffect
+  const [mounted, setMounted] = useState(false);
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
   const pathname = usePathname();
-  const { user } = useAuth();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isActive = (href: string) => pathname === href;
 
@@ -227,45 +235,83 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
                   ))}
                 </div>
               ) : (
-                <Collapsible open={section.open} onOpenChange={section.setOpen}>
-                  <CollapsibleTrigger asChild>
+                mounted ? (
+                  <Collapsible open={section.open} onOpenChange={section.setOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between px-3 h-auto py-2 font-semibold text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {section.title}
+                        {section.open ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 mt-1">
+                      {section.items.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className={`flex items-center justify-start gap-3 rounded-lg text-sm font-medium transition-colors group px-3 py-2 ${
+                            isActive(item.href)
+                              ? 'bg-primary text-primary-foreground crayon-effect'
+                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                          title={item.name}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="truncate">{item.name}</span>
+                          {item.comingSoon && (
+                            <span className="text-xs bg-orange-100 text-orange-800 px-1 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                              Soon
+                            </span>
+                          )}
+                        </div>
+                        </Link>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : (
+                  // Fallback for SSR - show expanded content
+                  <div className="space-y-1 mt-1">
                     <Button
                       variant="ghost"
-                      className="w-full justify-between px-3 h-auto py-2 font-semibold text-sm text-muted-foreground hover:text-foreground"
+                      className="w-full justify-between px-3 h-auto py-2 font-semibold text-sm text-muted-foreground hover:text-foreground pointer-events-none"
+                      disabled
                     >
                       {section.title}
-                      {section.open ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 mt-1">
-                    {section.items.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={`flex items-center justify-start gap-3 rounded-lg text-sm font-medium transition-colors group px-3 py-2 ${
-                          isActive(item.href)
-                            ? 'bg-primary text-primary-foreground crayon-effect'
-                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                        }`}
-                        title={item.name}
-                      >
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="truncate">{item.name}</span>
-                        {item.comingSoon && (
-                          <span className="text-xs bg-orange-100 text-orange-800 px-1 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
-                            Soon
-                          </span>
-                        )}
-                      </div>
-                      </Link>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
+                    <div className="space-y-1 mt-1">
+                      {section.items.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className={`flex items-center justify-start gap-3 rounded-lg text-sm font-medium transition-colors group px-3 py-2 ${
+                            isActive(item.href)
+                              ? 'bg-primary text-primary-foreground crayon-effect'
+                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                          title={item.name}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="truncate">{item.name}</span>
+                          {item.comingSoon && (
+                            <span className="text-xs bg-orange-100 text-orange-800 px-1 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                              Soon
+                            </span>
+                          )}
+                        </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )
               )
             ) : (
               <div className="space-y-3">
@@ -321,8 +367,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
           </div>
           {!isCollapsed && (
             <div>
-              <p className="text-sm font-medium">{user?.name || (userRole === 'admin' ? 'Admin User' : 'Student User')}</p>
-              <p className="text-xs text-muted-foreground">{user?.email || (userRole === 'admin' ? 'admin@gcsepal.com' : 'student@gcsepal.com')}</p>
+              <p className="text-sm font-medium">{authUser?.name || (userRole === 'admin' ? 'Admin User' : 'Student User')}</p>
+              <p className="text-xs text-muted-foreground">{authUser?.email || (userRole === 'admin' ? 'admin@gcsepal.com' : 'student@gcsepal.com')}</p>
             </div>
           )}
         </div>
@@ -344,20 +390,32 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole: propUserRole,
   return (
     <>
       {/* Mobile sidebar */}
-      <Sheet open={isOpen} onOpenChange={onOpenChange}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden fixed top-4 left-4 z-40"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
-          <SidebarContent />
-        </SheetContent>
-      </Sheet>
+      {mounted ? (
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden fixed top-4 left-4 z-40"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        // Fallback for SSR - show a simple button
+        <Button
+          variant="ghost"
+          size="sm"
+          className="lg:hidden fixed top-4 left-4 z-40 pointer-events-none"
+          disabled
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
       {/* Desktop sidebar - shown by default on larger screens */}
       <div className="hidden lg:block h-screen">

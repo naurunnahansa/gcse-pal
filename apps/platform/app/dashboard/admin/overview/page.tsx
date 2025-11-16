@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/AuthProvider";
 import {
   BookOpen,
@@ -120,7 +121,53 @@ const AdminOverview = () => {
         }
       } catch (err) {
         console.error('Error fetching admin data:', err);
-        setError('Failed to load admin dashboard');
+        // Provide fallback data when API fails
+        console.log('Using fallback admin data due to API error');
+        setAdminData({
+          platformStats: [
+            {
+              title: "Total Students",
+              value: "0",
+              change: "+0 this week",
+              icon: "Users",
+              color: "text-blue-600"
+            },
+            {
+              title: "Active Courses",
+              value: "0",
+              change: "+0 this month",
+              icon: "BookOpen",
+              color: "text-green-600"
+            },
+            {
+              title: "Avg Completion",
+              value: "0%",
+              change: "+0%",
+              icon: "Target",
+              color: "text-purple-600"
+            },
+            {
+              title: "Total Teachers",
+              value: "0",
+              change: "+0 this month",
+              icon: "Award",
+              color: "text-orange-600"
+            }
+          ],
+          courses: [],
+          students: [],
+          summary: {
+            totalUsers: 0,
+            totalCourses: 0,
+            publishedCourses: 0,
+            totalEnrollments: 0,
+            activeCourses: 0,
+            recentEnrollments: 0,
+            avgCompletionRate: 0,
+            totalStudyTime: 0
+          }
+        });
+        setError('Admin dashboard loaded with limited data');
       } finally {
         setLoading(false);
       }
@@ -209,19 +256,7 @@ const AdminOverview = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Error</h1>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
+  
   if (!adminData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -277,6 +312,19 @@ const AdminOverview = () => {
           Manage courses, monitor students, and oversee platform performance
         </p>
       </div>
+
+      {/* Error Warning Banner */}
+      {error && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">Limited Data Available</p>
+              <p className="text-sm text-yellow-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">

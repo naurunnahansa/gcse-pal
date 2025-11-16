@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UnifiedLayout } from "@/components/layouts/UnifiedLayout";
 import {
   Settings,
   Shield,
@@ -51,8 +50,7 @@ const AdminSettingsPage = () => {
   }
 
   return (
-    <UnifiedLayout userRole="admin" title="Admin Settings">
-      <div className="p-6">
+    <div className="p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Settings</h1>
           <p className="text-muted-foreground">
@@ -283,7 +281,6 @@ const AdminSettingsPage = () => {
           </Card>
         </div>
       </div>
-    </UnifiedLayout>
   );
 };
 

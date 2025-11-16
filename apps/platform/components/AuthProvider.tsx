@@ -40,35 +40,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sync user with our database when they sign in
   useEffect(() => {
     const syncUser = async () => {
+      console.log('🔐 AuthProvider sync check:', { isSignedIn, isLoaded, userExists: !!user });
+
       if (isSignedIn && user && isLoaded) {
         try {
-          // Call our auth sync endpoint to ensure user exists in database
-          const response = await fetch('/api/auth/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
+          console.log('🔄 Starting user sync for:', user.primaryEmailAddress?.emailAddress);
+
+          // Try the main sync endpoint first with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
+
+          let response;
+          try {
+            response = await fetch('/api/auth/sync', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              signal: controller.signal,
+            });
+          } catch (syncError) {
+            if (syncError.name === 'AbortError') {
+              console.warn('⏰ Main sync endpoint timed out, trying bypass...');
+
+              // Fallback to bypass endpoint
+              const bypassController = new AbortController();
+              const bypassTimeoutId = setTimeout(() => bypassController.abort(), 10000);
+
+              try {
+                response = await fetch('/api/auth/sync-bypass', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  signal: bypassController.signal,
+                });
+                clearTimeout(bypassTimeoutId);
+                console.log('🔄 Using bypass sync endpoint');
+              } catch (bypassError) {
+                if (bypassError.name === 'AbortError') {
+                  console.error('⏰ Bypass sync endpoint also timed out');
+                } else {
+                  console.error('💥 Bypass sync error:', bypassError);
+                }
+                return;
+              }
+            } else {
+              throw syncError;
+            }
+          }
+
+          clearTimeout(timeoutId);
+          console.log('📡 Sync response status:', response.status);
 
           if (!response.ok) {
-            console.error('Failed to sync user with database');
-            // Don't throw error here, just log it since user can still use the app
+            console.error('❌ Failed to sync user with database, status:', response.status);
           } else {
             const result = await response.json();
-            console.log('User synced successfully:', result.data);
+            console.log('✅ Sync response:', result.data);
+
             // Set user role from database response
             if (result.data?.role) {
               setUserRole(result.data.role);
+              console.log('🎯 User role set to:', result.data.role);
+            } else {
+              console.log('⚠️ No role found in sync response');
             }
           }
         } catch (error) {
-          console.error('Error syncing user:', error);
-          // Don't block the user from using the app if sync fails
+          console.error('💥 Error syncing user:', error);
         }
+      } else {
+        console.log('⏸️ Sync conditions not met:', { isSignedIn, isLoaded, userExists: !!user });
       }
     };
 
     syncUser();
+
+    // Also add a manual refresh function for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).refreshUserRole = syncUser;
+      console.log('💡 Manual refresh available: call window.refreshUserRole()');
+
+      // Fallback: Try to sync again after a delay if role is still null
+      if (!userRole && isSignedIn) {
+        setTimeout(() => {
+          console.log('🔄 Fallback sync attempt...');
+          syncUser();
+        }, 3000); // Increased to 3 seconds for bypass fallback
+      }
+    }
   }, [isSignedIn, user, isLoaded]);
 
   const updateUser = (clerkUser: any): User | null => {

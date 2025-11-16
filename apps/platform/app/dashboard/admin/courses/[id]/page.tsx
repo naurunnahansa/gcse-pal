@@ -13,7 +13,6 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle, ArrowLeft } from 'lucide-react';
 import { MuxVideoPlayer } from '@/components/MuxVideoPlayer';
 import { toast } from 'sonner';
-import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 import { useAuth } from '@/components/AuthProvider';
 
 interface Chapter {
@@ -554,30 +553,26 @@ const EditCoursePage = () => {
 
   if (!isAuthenticated) {
     return (
-      <UnifiedLayout userRole="admin" title="Authentication Required">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
-            <p className="text-muted-foreground mb-4">Please sign in to access admin features.</p>
-            <Button asChild>
-              <a href="/auth/signin">Sign In</a>
-            </Button>
-          </div>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Authentication Required</h1>
+          <p className="text-muted-foreground mb-4">Please sign in to access admin features.</p>
+          <Button asChild>
+            <a href="/auth/signin">Sign In</a>
+          </Button>
         </div>
-      </UnifiedLayout>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <UnifiedLayout userRole="admin" title="Loading Course">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading course...</p>
-          </div>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading course...</p>
         </div>
-      </UnifiedLayout>
+      </div>
     );
   }
 
