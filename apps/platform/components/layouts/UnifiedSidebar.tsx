@@ -60,29 +60,29 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Main',
       items: [
-        { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-        { name: 'Progress', href: '/progress', icon: TrendingUp },
+        { name: 'Dashboard', href: '/dashboard/overview', icon: BarChart3 },
+        { name: 'Progress', href: '/dashboard/progress', icon: TrendingUp },
       ],
     },
     {
       title: 'Courses',
       items: [
-        { name: 'My Courses', href: '/learning/courses/my', icon: Play },
-        { name: 'Browse Courses', href: '/learning/courses/browse', icon: Search },
+        { name: 'My Courses', href: '/dashboard/learning/courses/my', icon: Play },
+        { name: 'Browse Courses', href: '/dashboard/learning/courses/browse', icon: Search },
       ],
     },
     {
       title: 'Learning Tools',
       items: [
-        { name: 'Study Calendar', href: '/tools/calendar', icon: Calendar },
-        { name: 'Tasks', href: '/tools/tasks', icon: CheckSquare },
-        { name: 'Notes', href: '/tools/notes', icon: FileText },
+        { name: 'Study Calendar', href: '/dashboard/tools/calendar', icon: Calendar },
+        { name: 'Tasks', href: '/dashboard/tools/tasks', icon: CheckSquare },
+        { name: 'Notes', href: '/dashboard/tools/notes', icon: FileText },
       ],
     },
     {
       title: 'Settings',
       items: [
-        { name: 'Settings', href: '/settings', icon: Settings },
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
       ],
       collapsible: true,
       open: settingsOpen,
@@ -95,16 +95,16 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Main',
       items: [
-        { name: 'Admin Overview', href: '/admin', icon: BarChart3 },
-        { name: 'Student Dashboard', href: '/dashboard', icon: Home },
+        { name: 'Admin Overview', href: '/dashboard/admin/overview', icon: BarChart3 },
+        { name: 'Student Dashboard', href: '/dashboard/overview', icon: Home },
       ],
     },
     {
       title: 'Course Management',
       items: [
-        { name: 'All Courses', href: '/admin/courses', icon: BookOpen },
-        { name: 'Create Course', href: '/admin/courses/new', icon: BookOpen },
-        { name: 'Course Categories', href: '/admin/courses/categories', icon: FileText },
+        { name: 'All Courses', href: '/dashboard/admin/courses', icon: BookOpen },
+        { name: 'Create Course', href: '/dashboard/admin/courses/new', icon: BookOpen },
+        { name: 'Course Categories', href: '/dashboard/admin/courses/categories', icon: FileText },
       ],
       collapsible: true,
       open: coursesOpen,
@@ -113,16 +113,16 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'User Management',
       items: [
-        { name: 'All Students', href: '/admin/students', icon: Users },
-        { name: 'User Analytics', href: '/admin/students/analytics', icon: TrendingUp },
+        { name: 'All Students', href: '/dashboard/admin/students', icon: Users },
+        { name: 'User Analytics', href: '/dashboard/admin/students/analytics', icon: TrendingUp },
       ],
     },
     {
       title: 'Content Management',
       items: [
-        { name: 'Video Library', href: '/admin/videos', icon: Video },
-        { name: 'Assessments', href: '/admin/assessments', icon: FileText },
-        { name: 'Learning Materials', href: '/admin/materials', icon: BookOpen },
+        { name: 'Video Library', href: '/dashboard/admin/videos', icon: Video },
+        { name: 'Assessments', href: '/dashboard/admin/assessments', icon: FileText },
+        { name: 'Learning Materials', href: '/dashboard/admin/materials', icon: BookOpen },
       ],
       collapsible: true,
       open: contentOpen,
@@ -131,9 +131,9 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Admin Settings',
       items: [
-        { name: 'General Settings', href: '/admin/settings', icon: Settings },
-        { name: 'Integrations', href: '/admin/settings/integrations', icon: Settings },
-        { name: 'User Settings', href: '/settings', icon: Settings },
+        { name: 'General Settings', href: '/dashboard/admin/settings', icon: Settings },
+        { name: 'Integrations', href: '/dashboard/admin/settings/integrations', icon: Settings },
+        { name: 'User Settings', href: '/dashboard/settings', icon: Settings },
       ],
       collapsible: true,
       open: settingsOpen,
@@ -148,7 +148,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''} ${isCollapsed ? 'w-full' : 'gap-2'}`}>
-          <Link href={userRole === 'admin' ? '/admin' : '/dashboard'} className="flex items-center gap-2">
+          <Link href={userRole === 'admin' ? '/dashboard/admin/overview' : '/dashboard'} className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary crayon-effect">
               <span className="text-lg font-bold text-primary-foreground">G</span>
             </div>

@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const Footer = () => {
   const sections = [
     {
@@ -24,10 +26,17 @@ const Footer = () => {
           <div className="grid gap-8 md:grid-cols-5">
             <div className="md:col-span-1">
               <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-                  <span className="text-lg font-bold text-background">G</span>
+                <div className="flex h-16 w-16 items-center justify-center">
+                  <Image
+                    src="/logo-full.png"
+                    alt="GCSEPal"
+                    width={64}
+                    height={64}
+                    className="object-contain"
+                    quality={100}
+                    priority
+                  />
                 </div>
-                <span className="text-xl font-bold">GCSEPal</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Your AI-powered companion for GCSE success.

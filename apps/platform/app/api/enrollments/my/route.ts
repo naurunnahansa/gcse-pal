@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
+import { eq, and, inArray, desc } from 'drizzle-orm';
+import { users, enrollments, courses, chapters, lessons, progress } from '@/lib/db';
 
 // GET /api/enrollments/my - Get user's course enrollments with progress
 export async function GET(req: NextRequest) {
@@ -14,9 +16,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const user = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1)
+      .then(result => result[0] || null);
 
     if (!user) {
       return NextResponse.json(
@@ -25,37 +29,69 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user's enrollments with course details
-    const enrollments = await prisma.enrollment.findMany({
-      where: { userId: user.id },
-      include: {
+    // Get user's enrollments
+    const userEnrollments = await db.select()
+      .from(enrollments)
+      .where(eq(enrollments.userId, user.id))
+      .orderBy(desc(enrollments.enrolledAt));
+
+    // Get course details for all enrollments
+    const enrollmentCourseIds = userEnrollments.map(e => e.courseId);
+    const enrolledCourses = await db.select()
+      .from(courses)
+      .where(inArray(courses.id, enrollmentCourseIds));
+
+    // Get chapters for all enrolled courses
+    const courseChapters = await db.select()
+      .from(chapters)
+      .where(inArray(chapters.courseId, enrollmentCourseIds))
+      .orderBy(chapters.order);
+
+    // Get lesson counts for chapters
+    const chapterIds = courseChapters.map(c => c.id);
+    const chapterLessons = await db.select()
+      .from(lessons)
+      .where(inArray(lessons.chapterId, chapterIds));
+
+    // Combine the data to match the original structure
+    const enrollments = userEnrollments.map(enrollment => {
+      const course = enrolledCourses.find(c => c.id === enrollment.courseId);
+      if (!course) return null;
+
+      const courseChaptersWithLessons = courseChapters
+        .filter(chapter => chapter.courseId === course.id)
+        .map(chapter => ({
+          id: chapter.id,
+          title: chapter.title,
+          duration: chapter.duration,
+          order: chapter.order,
+          lessons: chapterLessons
+            .filter(lesson => lesson.chapterId === chapter.id)
+            .map(lesson => ({ id: lesson.id }))
+        }));
+
+      return {
+        id: enrollment.id,
+        userId: enrollment.userId,
+        courseId: enrollment.courseId,
+        enrolledAt: enrollment.enrolledAt,
+        completedAt: enrollment.completedAt,
+        progress: enrollment.progress,
+        status: enrollment.status,
         course: {
-          include: {
-            chapters: {
-              select: {
-                id: true,
-                title: true,
-                duration: true,
-                order: true,
-                lessons: {
-                  select: { id: true },
-                },
-              },
-              orderBy: { order: 'asc' },
-            },
-          },
-        },
-      },
-      orderBy: { enrolledAt: 'desc' },
-    });
+          ...course,
+          chapters: courseChaptersWithLessons
+        }
+      };
+    }).filter(Boolean); // Remove any null entries
 
     // Get progress for all user enrollments
-    const progress = await prisma.progress.findMany({
-      where: {
-        userId: user.id,
-        courseId: { in: enrollments.map(e => e.courseId) },
-      },
-    });
+    const userProgress = await db.select()
+      .from(progress)
+      .where(and(
+        eq(progress.userId, user.id),
+        inArray(progress.courseId, enrollmentCourseIds)
+      ));
 
     // Calculate progress for each enrollment
     const formattedEnrollments = enrollments.map(enrollment => {
@@ -63,17 +99,17 @@ export async function GET(req: NextRequest) {
         (sum, chapter) => sum + chapter.lessons.length,
         0
       );
-      const completedLessons = progress.filter(
+      const completedLessons = userProgress.filter(
         p => p.courseId === enrollment.courseId && p.status === 'completed' && p.lessonId
       ).length;
       const calculatedProgress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
       // Update progress if it differs
       if (Math.abs(calculatedProgress - enrollment.progress) > 1) {
-        prisma.enrollment.update({
-          where: { id: enrollment.id },
-          data: { progress: calculatedProgress },
-        }).catch(console.error);
+        db.update(enrollments)
+          .set({ progress: calculatedProgress })
+          .where(eq(enrollments.id, enrollment.id))
+          .catch(console.error);
       }
 
       return {
@@ -96,8 +132,8 @@ export async function GET(req: NextRequest) {
         completedAt: enrollment.completedAt,
         status: enrollment.status,
         progress: Math.round(calculatedProgress),
-        lastAccessed: progress.length > 0
-          ? new Date(Math.max(...progress.filter(p => p.courseId === enrollment.courseId).map(p => new Date(p.lastAccessed).getTime())))
+        lastAccessed: userProgress.length > 0
+          ? new Date(Math.max(...userProgress.filter(p => p.courseId === enrollment.courseId).map(p => new Date(p.lastAccessed).getTime())))
           : enrollment.enrolledAt,
       };
     });

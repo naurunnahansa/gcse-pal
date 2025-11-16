@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import {
+  db,
+  users,
+  enrollments,
+  courses,
+  lessons,
+  progress,
+  userItems,
+  activityLog,
+  quizSubmissions,
+  chapters,
+  tasks,
+  quizzes,
+  getUserActivityStats,
+  getUserLearningProgress,
+  getQuizStats
+} from '@/lib/db';
+import { eq, and, count, gte, lte, desc, inArray, lt } from 'drizzle-orm';
 import { ensureUserExists } from '@/lib/user-sync';
 
 // GET /api/progress - Get comprehensive progress data for the authenticated user
@@ -17,9 +34,12 @@ export async function GET(req: NextRequest) {
     // Ensure user exists in our database
     const userRecord = await ensureUserExists();
 
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const userResults = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
+
+    const user = userResults[0];
 
     if (!user) {
       return NextResponse.json(
@@ -28,10 +48,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user settings for daily goals
-    const userSettings = await prisma.userSettings.findUnique({
-      where: { userId: user.id },
-    });
+    // Get user settings for daily goals from preferences
+    const userPreferences = user.preferences || {};
+    const userSettings = {
+      dailyGoal: userPreferences.dailyGoal || 60,
+      emailNotifications: userPreferences.emailNotifications ?? true,
+      pushNotifications: userPreferences.pushNotifications ?? true,
+      studyReminders: userPreferences.studyReminders ?? true
+    };
 
     // Get all progress data in parallel for better performance
     const [
@@ -96,93 +120,74 @@ export async function GET(req: NextRequest) {
 
 // Helper function to get overall statistics
 async function getOverallStats(userId: string) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
   const [
     totalStudyTime,
     weeklyStudyTime,
     totalQuestions,
     averageScore,
-    enrollments
+    enrollmentCount
   ] = await Promise.all([
-    // Total study time (all time)
-    prisma.studySession.aggregate({
-      where: { userId },
-      _sum: { duration: true },
-    }),
-    // Weekly study time (last 7 days)
-    prisma.studySession.aggregate({
-      where: {
-        userId,
-        startTime: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        },
-      },
-      _sum: { duration: true },
-    }),
-    // Total quiz questions attempted
-    prisma.quizAttempt.count({
-      where: { userId },
-    }),
-    // Average quiz score
-    prisma.quizAttempt.aggregate({
-      where: { userId },
-      _avg: { score: true },
-    }),
+    // Total study time (all time) - use activity_log table
+    db.select({ totalDuration: { sum: activityLog.duration } })
+      .from(activityLog)
+      .where(eq(activityLog.userId, userId))
+      .then(result => result[0]?.totalDuration || 0),
+
+    // Weekly study time (last 7 days) - use activity_log table
+    db.select({ totalDuration: { sum: activityLog.duration } })
+      .from(activityLog)
+      .where(and(
+        eq(activityLog.userId, userId),
+        gte(activityLog.startedAt, sevenDaysAgo)
+      ))
+      .then(result => result[0]?.totalDuration || 0),
+
+    // Total quiz questions attempted - use quiz_submissions table
+    db.select({ count: count() })
+      .from(quizSubmissions)
+      .where(eq(quizSubmissions.userId, userId))
+      .then(result => result[0]?.count || 0),
+
+    // Average quiz score - use quiz_submissions table
+    db.select({ avgScore: { avg: quizSubmissions.score } })
+      .from(quizSubmissions)
+      .where(eq(quizSubmissions.userId, userId))
+      .then(result => result[0]?.avgScore || 0),
+
     // Number of enrolled courses
-    prisma.enrollment.count({
-      where: { userId },
-    }),
+    db.select({ count: count() })
+      .from(enrollments)
+      .where(eq(enrollments.userId, userId))
+      .then(result => result[0]?.count || 0)
   ]);
 
   return {
-    totalStudyTime: totalStudyTime._sum.duration || 0,
-    weeklyStudyTime: weeklyStudyTime._sum.duration || 0,
+    totalStudyTime: totalStudyTime || 0,
+    weeklyStudyTime: weeklyStudyTime || 0,
     totalQuestions,
-    averageScore: averageScore._avg.score || 0,
-    enrollments,
+    averageScore: averageScore || 0,
+    enrollments: enrollmentCount,
   };
 }
 
 // Helper function to get subject-wise progress
 async function getSubjectProgress(userId: string) {
-  // Get progress by subject through courses
-  const progressByCourse = await prisma.progress.groupBy({
-    by: ['courseId'],
-    where: {
-      userId,
-      status: 'completed',
-    },
-    _count: true,
-  });
+  // Get enrolled courses with their subjects
+  const enrolledCourses = await db.select({
+    courseId: courses.id,
+    subject: courses.subject,
+  })
+    .from(enrollments)
+    .leftJoin(courses, eq(enrollments.courseId, courses.id))
+    .where(eq(enrollments.userId, userId));
 
-  const courseIds = progressByCourse.map(p => p.courseId);
-  const courses = await prisma.course.findMany({
-    where: { id: { in: courseIds } },
-    select: {
-      id: true,
-      subject: true,
-    },
-  });
-
-  // Get study time and quiz stats per subject
-  const subjectStats = await prisma.studySession.groupBy({
-    by: ['courseId'],
-    where: { userId },
-    _sum: { duration: true },
-    _count: true,
-  });
-
-  const quizStats = await prisma.quizAttempt.groupBy({
-    by: ['quizId'],
-    where: { userId },
-    _avg: { score: true },
-  });
-
-  // Combine all data by subject
   const subjectProgressMap = new Map();
 
-  // Initialize with enrolled courses
-  courses.forEach(course => {
-    if (!subjectProgressMap.has(course.subject)) {
+  // Initialize subjects from enrolled courses
+  enrolledCourses.forEach(course => {
+    if (course.subject && !subjectProgressMap.has(course.subject)) {
       subjectProgressMap.set(course.subject, {
         id: course.subject,
         name: course.subject.charAt(0).toUpperCase() + course.subject.slice(1),
@@ -198,51 +203,97 @@ async function getSubjectProgress(userId: string) {
     }
   });
 
-  // Update with progress data
-  progressByCourse.forEach(progress => {
-    const course = courses.find(c => c.id === progress.courseId);
-    if (course) {
+  if (enrolledCourses.length === 0) {
+    return [];
+  }
+
+  // Get completed progress by course
+  const completedProgress = await db.select({
+    courseId: progress.courseId,
+    count: count()
+  })
+    .from(progress)
+    .where(and(
+      eq(progress.userId, userId),
+      eq(progress.status, 'completed')
+    ))
+    .groupBy(progress.courseId);
+
+  // Get study time by course from activity_log
+  const studyTimeByCourse = await db.select({
+    courseId: activityLog.courseId,
+    totalDuration: { sum: activityLog.duration }
+  })
+    .from(activityLog)
+    .where(eq(activityLog.userId, userId))
+    .groupBy(activityLog.courseId);
+
+  // Get quiz stats from quiz_submissions
+  const quizStatsByCourse = await db.select({
+    score: quizSubmissions.score
+  })
+    .from(quizSubmissions)
+    .leftJoin(quizzes, eq(quizSubmissions.quizId, quizzes.id))
+    .where(eq(quizSubmissions.userId, userId));
+
+  // Get total lessons per enrolled course
+  const totalLessonsByCourse = await db.select({
+    courseId: courses.id,
+    totalLessons: count()
+  })
+    .from(courses)
+    .leftJoin(chapters, eq(chapters.courseId, courses.id))
+    .leftJoin(lessons, eq(lessons.chapterId, chapters.id))
+    .where(inArray(courses.id, enrolledCourses.map(c => c.courseId!)))
+    .groupBy(courses.id);
+
+  // Update progress data
+  completedProgress.forEach(progress => {
+    const course = enrolledCourses.find(c => c.courseId === progress.courseId);
+    if (course && course.subject) {
       const subject = subjectProgressMap.get(course.subject);
       if (subject) {
-        subject.completedTopics += progress._count;
+        subject.completedTopics += progress.count;
       }
     }
   });
 
-  // Update with study time data
-  subjectStats.forEach(stat => {
-    const course = courses.find(c => c.id === stat.courseId);
-    if (course) {
+  // Update study time data
+  studyTimeByCourse.forEach(stat => {
+    const course = enrolledCourses.find(c => c.courseId === stat.courseId);
+    if (course && course.subject) {
       const subject = subjectProgressMap.get(course.subject);
       if (subject) {
-        subject.studyTime += Math.round((stat._sum.duration || 0) / 60); // Convert to hours
+        subject.studyTime += Math.round((stat.totalDuration || 0) / 60); // Convert to hours
       }
     }
   });
 
-  // Calculate progress percentages and total topics
-  const totalTopicsByCourse = await prisma.lesson.count({
-    where: {
-      chapter: {
-        course: {
-          enrollments: {
-            some: { userId }
-          }
-        }
-      }
-    }
+  // Calculate total topics per subject
+  subjectProgressMap.forEach((subject, subjectName) => {
+    const subjectCourses = enrolledCourses.filter(c => c.subject === subjectName);
+    const subjectCourseIds = subjectCourses.map(c => c.courseId!);
+
+    const totalTopics = totalLessonsByCourse
+      .filter(tl => subjectCourseIds.includes(tl.courseId))
+      .reduce((sum, tl) => sum + (tl.totalLessons || 0), 0);
+
+    subject.totalTopics = totalTopics;
+    subject.progress = totalTopics > 0
+      ? Math.round((subject.completedTopics / totalTopics) * 100)
+      : 0;
   });
 
-  subjectProgressMap.forEach(subject => {
-    subject.totalTopics = totalTopicsByCourse;
-    subject.progress = subject.totalTopics > 0
-      ? Math.round((subject.completedTopics / subject.totalTopics) * 100)
-      : 0;
-    subject.questionsAnswered = quizStats.length;
-    subject.accuracy = quizStats.length > 0
-      ? Math.round((quizStats.reduce((sum, stat) => sum + (stat._avg.score || 0), 0) / quizStats.length) * 100)
-      : 0;
-  });
+  // Calculate quiz stats
+  if (quizStatsByCourse.length > 0) {
+    const totalQuizzes = quizStatsByCourse.length;
+    const averageAccuracy = quizStatsByCourse.reduce((sum, stat) => sum + stat.score, 0) / totalQuizzes;
+
+    subjectProgressMap.forEach(subject => {
+      subject.questionsAnswered = totalQuizzes;
+      subject.accuracy = Math.round(averageAccuracy * 100);
+    });
+  }
 
   return Array.from(subjectProgressMap.values());
 }
@@ -260,44 +311,41 @@ async function getWeeklyActivity(userId: string) {
     const nextDate = new Date(date);
     nextDate.setDate(nextDate.getDate() + 1);
 
-    const [studyTime, sessionCount, questionCount] = await Promise.all([
-      // Study time for this day
-      prisma.studySession.aggregate({
-        where: {
-          userId,
-          startTime: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-        _sum: { duration: true },
-        _count: true,
-      }),
-      // Session count
-      prisma.studySession.count({
-        where: {
-          userId,
-          startTime: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      }),
-      // Questions answered on this day
-      prisma.quizAttempt.count({
-        where: {
-          userId,
-          startedAt: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      }),
+    const [studyTimeResult, sessionCount, questionCount] = await Promise.all([
+      // Study time for this day - use activity_log table
+      db.select({ totalDuration: { sum: activityLog.duration } })
+        .from(activityLog)
+        .where(and(
+          eq(activityLog.userId, userId),
+          gte(activityLog.startedAt, date),
+          lt(activityLog.startedAt, nextDate) // startedAt < nextDate
+        ))
+        .then(result => result[0]?.totalDuration || 0),
+
+      // Session count - use activity_log table
+      db.select({ count: count() })
+        .from(activityLog)
+        .where(and(
+          eq(activityLog.userId, userId),
+          gte(activityLog.startedAt, date),
+          lt(activityLog.startedAt, nextDate) // startedAt < nextDate
+        ))
+        .then(result => result[0]?.count || 0),
+
+      // Questions answered on this day - use quiz_submissions table
+      db.select({ count: count() })
+        .from(quizSubmissions)
+        .where(and(
+          eq(quizSubmissions.userId, userId),
+          gte(quizSubmissions.startedAt, date),
+          lt(quizSubmissions.startedAt, nextDate) // startedAt < nextDate
+        ))
+        .then(result => result[0]?.count || 0),
     ]);
 
     weeklyActivity.push({
       day: date.toLocaleDateString('en', { weekday: 'short' }),
-      hours: Math.round((studyTime._sum.duration || 0) / 60 * 10) / 10, // Round to 1 decimal
+      hours: Math.round((studyTimeResult || 0) / 60 * 10) / 10, // Round to 1 decimal
       topics: sessionCount,
       questions: questionCount,
     });
@@ -308,84 +356,76 @@ async function getWeeklyActivity(userId: string) {
 
 // Helper function to get recent progress/milestones
 async function getRecentProgress(userId: string) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
   const [
     recentLessons,
     recentQuizzes,
     recentTasks
   ] = await Promise.all([
     // Recent completed lessons
-    prisma.progress.findMany({
-      where: {
-        userId,
-        status: 'completed',
-        completedAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-        },
-      },
-      include: {
-        lesson: {
-          include: {
-            chapter: {
-              include: {
-                course: {
-                  select: { subject: true }
-                }
-              }
-            }
-          }
-        },
-      },
-      orderBy: { completedAt: 'desc' },
-      take: 5,
-    }),
+    db.select({
+      lessonId: progress.lessonId,
+      lessonTitle: lessons.title,
+      chapterId: progress.chapterId,
+      completedAt: progress.completedAt,
+      courseSubject: courses.subject
+    })
+      .from(progress)
+      .leftJoin(lessons, eq(progress.lessonId, lessons.id))
+      .leftJoin(chapters, eq(progress.chapterId, chapters.id))
+      .leftJoin(courses, eq(chapters.courseId, courses.id))
+      .where(and(
+        eq(progress.userId, userId),
+        eq(progress.status, 'completed'),
+        gte(progress.completedAt!, sevenDaysAgo)
+      ))
+      .orderBy(desc(progress.completedAt))
+      .limit(5),
+
     // Recent quiz attempts
-    prisma.quizAttempt.findMany({
-      where: {
-        userId,
-        completedAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        },
-      },
-      include: {
-        quiz: {
-          include: {
-            course: {
-              select: { subject: true }
-            }
-          }
-        }
-      },
-      orderBy: { completedAt: 'desc' },
-      take: 5,
-    }),
+    db.select({
+      quizTitle: quizzes.title,
+      score: quizSubmissions.score,
+      completedAt: quizSubmissions.completedAt,
+      courseSubject: courses.subject
+    })
+      .from(quizSubmissions)
+      .leftJoin(quizzes, eq(quizSubmissions.quizId, quizzes.id))
+      .leftJoin(courses, eq(quizzes.courseId, courses.id))
+      .where(and(
+        eq(quizSubmissions.userId, userId),
+        gte(quizSubmissions.completedAt!, sevenDaysAgo)
+      ))
+      .orderBy(desc(quizSubmissions.completedAt))
+      .limit(5),
+
     // Recent completed tasks
-    prisma.task.findMany({
-      where: {
-        userId,
-        status: 'completed',
-        completedAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        },
-      },
-      include: {
-        course: {
-          select: { subject: true }
-        }
-      },
-      orderBy: { completedAt: 'desc' },
-      take: 3,
-    }),
+    db.select({
+      taskTitle: tasks.title,
+      completedAt: tasks.completedAt,
+      courseSubject: courses.subject
+    })
+      .from(tasks)
+      .leftJoin(courses, eq(tasks.courseId, courses.id))
+      .where(and(
+        eq(tasks.userId, userId),
+        eq(tasks.status, 'completed'),
+        gte(tasks.completedAt!, sevenDaysAgo)
+      ))
+      .orderBy(desc(tasks.completedAt))
+      .limit(3),
   ]);
 
   const milestones = [];
 
   // Add lesson completions
   recentLessons.forEach(progress => {
-    if (progress.lesson) {
+    if (progress.lessonTitle) {
       milestones.push({
         type: 'topic-completed',
-        title: `Completed ${progress.lesson.title}`,
-        subject: progress.lesson.chapter?.course?.subject || 'General',
+        title: `Completed ${progress.lessonTitle}`,
+        subject: progress.courseSubject || 'General',
         date: formatRelativeTime(progress.completedAt!),
         icon: 'CheckCircle',
       });
@@ -397,8 +437,8 @@ async function getRecentProgress(userId: string) {
     if (attempt.score >= 90) {
       milestones.push({
         type: 'quiz-score',
-        title: `Scored ${Math.round(attempt.score)}% on ${attempt.quiz.title}`,
-        subject: attempt.quiz.course?.subject || 'General',
+        title: `Scored ${Math.round(attempt.score)}% on ${attempt.quizTitle}`,
+        subject: attempt.courseSubject || 'General',
         date: formatRelativeTime(attempt.completedAt!),
         icon: 'Target',
       });
@@ -409,8 +449,8 @@ async function getRecentProgress(userId: string) {
   recentTasks.forEach(task => {
     milestones.push({
       type: 'task-completed',
-      title: `Completed task: ${task.title}`,
-      subject: task.course?.subject || 'General',
+      title: `Completed task: ${task.taskTitle}`,
+      subject: task.courseSubject || 'General',
       date: formatRelativeTime(task.completedAt!),
       icon: 'CheckCircle',
     });
@@ -421,33 +461,49 @@ async function getRecentProgress(userId: string) {
 
 // Helper function to get quiz attempts
 async function getRecentQuizAttempts(userId: string) {
-  return await prisma.quizAttempt.findMany({
-    where: { userId },
-    include: {
-      quiz: {
-        include: {
-          course: {
-            select: { subject: true }
-          }
-        }
-      }
-    },
-    orderBy: { completedAt: 'desc' },
-    take: 10,
-  });
+  return await db.select({
+    id: quizSubmissions.id,
+    quizId: quizSubmissions.quizId,
+    score: quizSubmissions.score,
+    passed: quizSubmissions.passed,
+    startedAt: quizSubmissions.startedAt,
+    completedAt: quizSubmissions.completedAt,
+    attemptNumber: quizSubmissions.attemptNumber,
+    timeSpent: quizSubmissions.timeSpent,
+    quizTitle: quizzes.title,
+    courseSubject: courses.subject
+  })
+    .from(quizSubmissions)
+    .leftJoin(quizzes, eq(quizSubmissions.quizId, quizzes.id))
+    .leftJoin(courses, eq(quizzes.courseId, courses.id))
+    .where(eq(quizSubmissions.userId, userId))
+    .orderBy(desc(quizSubmissions.completedAt))
+    .limit(10);
 }
 
 // Helper function to get achievements (mock for now)
 async function getAchievements(userId: string) {
-  const [totalQuizzes, totalStudyTime, completedCourses] = await Promise.all([
-    prisma.quizAttempt.count({ where: { userId } }),
-    prisma.studySession.aggregate({
-      where: { userId },
-      _sum: { duration: true },
-    }),
-    prisma.enrollment.count({
-      where: { userId, status: 'completed' },
-    }),
+  const [totalQuizzes, totalStudyTimeResult, completedCourses] = await Promise.all([
+    // Total quiz attempts - use quiz_submissions table
+    db.select({ count: count() })
+      .from(quizSubmissions)
+      .where(eq(quizSubmissions.userId, userId))
+      .then(result => result[0]?.count || 0),
+
+    // Total study time - use activity_log table
+    db.select({ totalDuration: { sum: activityLog.duration } })
+      .from(activityLog)
+      .where(eq(activityLog.userId, userId))
+      .then(result => result[0]?.totalDuration || 0),
+
+    // Completed courses
+    db.select({ count: count() })
+      .from(enrollments)
+      .where(and(
+        eq(enrollments.userId, userId),
+        eq(enrollments.status, 'completed')
+      ))
+      .then(result => result[0]?.count || 0)
   ]);
 
   return [
@@ -485,21 +541,23 @@ async function getAchievements(userId: string) {
 
 // Helper function to calculate study streak
 async function getStudyStreak(userId: string): Promise<number> {
-  const sessions = await prisma.studySession.findMany({
-    where: {
-      userId,
-      startTime: {
-        gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-      },
-    },
-    orderBy: { startTime: 'desc' },
-  });
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  if (sessions.length === 0) return 0;
+  const activities = await db.select({
+    startedAt: activityLog.startedAt
+  })
+    .from(activityLog)
+    .where(and(
+      eq(activityLog.userId, userId),
+      gte(activityLog.startedAt, thirtyDaysAgo)
+    ))
+    .orderBy(desc(activityLog.startedAt));
+
+  if (activities.length === 0) return 0;
 
   const studyDates = new Set(
-    sessions.map(session => {
-      const date = new Date(session.startTime);
+    activities.map(activity => {
+      const date = new Date(activity.startedAt);
       date.setHours(0, 0, 0, 0);
       return date.getTime();
     })

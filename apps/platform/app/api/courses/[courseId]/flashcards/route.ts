@@ -4,10 +4,12 @@ import {
   db,
   users,
   courses,
+  chapters,
   flashCards,
+  flashCardReviews,
   enrollments
 } from '@/lib/db/queries';
-import { eq, and, ilike } from 'drizzle-orm';
+import { eq, and, or, desc, asc, inArray } from 'drizzle-orm';
 
 // GET /api/courses/[courseId]/flashcards - Get flash cards for a course
 export async function GET(
@@ -64,120 +66,112 @@ export async function GET(
     }
 
     // Build the where clause for filtering
-    const whereClause: any = {
-      isPublished: true,
-      OR: [
-        { courseId: courseId },
-        {
-          chapter: {
-            courseId: courseId
-          }
-        }
-      ]
-    };
+    // Get flashcards directly or through chapters that belong to this course
+    const flashCardsQuery = db.select({
+      id: flashCards.id,
+      front: flashCards.front,
+      back: flashCards.back,
+      category: flashCards.category,
+      difficulty: flashCards.difficulty,
+      tags: flashCards.tags,
+      courseId: flashCards.courseId,
+      chapterId: flashCards.chapterId,
+      isPublished: flashCards.isPublished,
+      createdAt: flashCards.createdAt,
+      updatedAt: flashCards.updatedAt,
+      // Chapter information
+      chapter: {
+        id: chapters.id,
+        title: chapters.title,
+        order: chapters.order
+      }
+    })
+      .from(flashCards)
+      .leftJoin(chapters, eq(flashCards.chapterId, chapters.id))
+      .where(and(
+        eq(flashCards.isPublished, true),
+        or(
+          eq(flashCards.courseId, courseId),
+          eq(chapters.courseId, courseId)
+        ),
+        chapterId ? eq(flashCards.chapterId, chapterId) : undefined,
+        category ? eq(flashCards.category, category) : undefined,
+        difficulty ? eq(flashCards.difficulty, difficulty.toLowerCase() as any) : undefined
+      ))
+      .orderBy(asc(chapters.order), asc(flashCards.createdAt));
 
-    if (chapterId) {
-      whereClause.chapterId = chapterId;
+    if (limit) {
+      flashCardsQuery.limit(limit);
     }
 
-    if (category) {
-      whereClause.category = category;
-    }
+    const flashCardsData = await flashCardsQuery;
 
-    if (difficulty) {
-      whereClause.difficulty = difficulty.toLowerCase();
+    // Get user's review status for each flashcard
+    const flashCardIds = flashCardsData.map(card => card.id);
+    let reviewData = [];
+    if (flashCardIds.length > 0) {
+      reviewData = await db.select()
+        .from(flashCardReviews)
+        .where(and(
+          eq(flashCardReviews.userId, user.id),
+          inArray(flashCardReviews.flashCardId, flashCardIds)
+        ));
     }
-
-    // Get flash cards with user's review status
-    const flashCards = await prisma.flashCard.findMany({
-      where: whereClause,
-      include: {
-        chapter: {
-          select: {
-            id: true,
-            title: true,
-            order: true
-          }
-        },
-        reviews: {
-          where: {
-            userId: user.id
-          },
-          select: {
-            quality: true,
-            easeFactor: true,
-            interval: true,
-            repetitions: true,
-            reviewedAt: true,
-            nextReview: true
-          }
-        }
-      },
-      orderBy: [
-        { chapter: { order: 'asc' } },
-        { createdAt: 'asc' }
-      ],
-      take: limit
-    });
 
     // Format the response
-    const formattedFlashCards = flashCards.map(card => ({
-      id: card.id,
-      front: card.front,
-      back: card.back,
-      category: card.category,
-      difficulty: card.difficulty,
-      tags: card.tags,
-      chapter: card.chapter,
-      reviewStatus: card.reviews[0] || null,
-      needsReview: card.reviews[0] ?
-        new Date() > new Date(card.reviews[0].nextReview) : true
-    }));
+    const formattedFlashCards = flashCardsData.map(card => {
+      // Find the review for this card
+      const review = reviewData.find(r => r.flashCardId === card.id);
+      return {
+        id: card.id,
+        front: card.front,
+        back: card.back,
+        category: card.category,
+        difficulty: card.difficulty,
+        tags: card.tags,
+        chapter: card.chapter,
+        reviewStatus: review || null,
+        needsReview: review ? new Date() > new Date(review.nextReview) : true
+      };
+    });
 
     // Get available categories and difficulties for filters
-    const categories = await prisma.flashCard.findMany({
-      where: {
-        isPublished: true,
-        OR: [
-          { courseId: courseId },
-          {
-            chapter: {
-              courseId: courseId
-            }
-          }
-        ]
-      },
-      select: {
-        category: true
-      },
-      distinct: ['category']
-    });
+    const categoriesQuery = db.select({ category: flashCards.category })
+      .from(flashCards)
+      .leftJoin(chapters, eq(flashCards.chapterId, chapters.id))
+      .where(and(
+        eq(flashCards.isPublished, true),
+        or(
+          eq(flashCards.courseId, courseId),
+          eq(chapters.courseId, courseId)
+        )
+      ));
 
-    const difficulties = await prisma.flashCard.findMany({
-      where: {
-        isPublished: true,
-        OR: [
-          { courseId: courseId },
-          {
-            chapter: {
-              courseId: courseId
-            }
-          }
-        ]
-      },
-      select: {
-        difficulty: true
-      },
-      distinct: ['difficulty']
-    });
+    const difficultiesQuery = db.select({ difficulty: flashCards.difficulty })
+      .from(flashCards)
+      .leftJoin(chapters, eq(flashCards.chapterId, chapters.id))
+      .where(and(
+        eq(flashCards.isPublished, true),
+        or(
+          eq(flashCards.courseId, courseId),
+          eq(chapters.courseId, courseId)
+        )
+      ));
+
+    const categories = await categoriesQuery;
+    const difficulties = await difficultiesQuery;
+
+    // Get distinct values
+    const uniqueCategories = Array.from(new Set(categories.map(c => c.category).filter(Boolean)));
+    const uniqueDifficulties = Array.from(new Set(difficulties.map(d => d.difficulty).filter(Boolean)));
 
     const response = {
       success: true,
       data: {
         flashCards: formattedFlashCards,
         filters: {
-          categories: categories.map(c => c.category),
-          difficulties: difficulties.map(d => d.difficulty),
+          categories: uniqueCategories,
+          difficulties: uniqueDifficulties,
         },
         stats: {
           totalCards: formattedFlashCards.length,
@@ -216,9 +210,12 @@ export async function POST(
     const { front, back, category, difficulty, tags, chapterId, isPublished } = body;
 
     // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
+    const userResults = await db.select()
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
+
+    const user = userResults[0];
 
     if (!user) {
       return NextResponse.json(
@@ -244,8 +241,8 @@ export async function POST(
     }
 
     // Create flash card
-    const flashCard = await prisma.flashCard.create({
-      data: {
+    const flashCardResults = await db.insert(flashCards)
+      .values({
         front,
         back,
         category,
@@ -254,20 +251,31 @@ export async function POST(
         chapterId: chapterId || null,
         courseId: chapterId ? null : courseId,
         isPublished: isPublished || false
-      },
-      include: {
-        chapter: {
-          select: {
-            id: true,
-            title: true
-          }
-        }
-      }
-    });
+      })
+      .returning();
+
+    const flashCard = flashCardResults[0];
+
+    // Get chapter information if chapterId is provided
+    let chapterInfo = null;
+    if (flashCard.chapterId) {
+      const chapterResults = await db.select({
+        id: chapters.id,
+        title: chapters.title
+      })
+        .from(chapters)
+        .where(eq(chapters.id, flashCard.chapterId))
+        .limit(1);
+
+      chapterInfo = chapterResults[0] || null;
+    }
 
     return NextResponse.json({
       success: true,
-      data: flashCard
+      data: {
+        ...flashCard,
+        chapter: chapterInfo
+      }
     });
   } catch (error) {
     console.error('Create flash card error:', error);

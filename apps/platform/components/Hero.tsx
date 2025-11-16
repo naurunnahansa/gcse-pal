@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import GameOfLifeGrid from "@/components/GameOfLifeGrid";
 
 const Hero = () => {
@@ -10,6 +11,18 @@ const Hero = () => {
       <GameOfLifeGrid />
 
       <div className="flex flex-col items-center text-center relative z-20">
+
+        <div className="mb-8">
+          <Image
+            src="/badge-logo.png"
+            alt="GCSEPal"
+            width={120}
+            height={120}
+            className="object-contain"
+            quality={100}
+            priority
+          />
+        </div>
 
         <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight md:text-7xl">
           Ready for that <span className="text-primary crayon-text">A*</span>?

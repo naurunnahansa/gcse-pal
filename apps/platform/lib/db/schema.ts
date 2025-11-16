@@ -40,7 +40,7 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    clerkId: text('clerk_id').notNull().unique(),
+    clerkId: text('clerkId').notNull().unique(),
     email: text('email').notNull().unique(),
     name: text('name').notNull(),
     avatar: text('avatar'),
@@ -55,11 +55,11 @@ export const users = pgTable(
       preferredStudyTime: 'evening',
       studyDays: [1, 2, 3, 4, 5]
     }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
   },
   (table) => ({
-    clerkIdIdx: index('users_clerk_id_idx').on(table.clerkId),
+    clerkIdIdx: index('users_clerkId_idx').on(table.clerkId),
     emailIdx: index('users_email_idx').on(table.email),
     preferencesGinIdx: index('users_preferences_gin_idx').using('gin', table.preferences),
   })
@@ -159,6 +159,7 @@ export const enrollments = pgTable(
     courseId: text('course_id').notNull(),
     enrolledAt: timestamp('enrolled_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
+    lastActivityAt: timestamp('last_activity_at'),
     progress: real('progress').default(0), // 0-100 percentage
     status: enrollmentStatusEnum('status').default('active'),
   },
@@ -722,7 +723,7 @@ export type UserItem = typeof userItems.$inferSelect;
 export type NewUserItem = typeof userItems.$inferInsert;
 
 export type ItemTag = typeof itemTags.$inferSelect;
-export typeNewItemTag = typeof itemTags.$inferInsert;
+export type NewItemTag = typeof itemTags.$inferInsert;
 
 export type ActivityLog = typeof activityLog.$inferSelect;
 export type NewActivityLog = typeof activityLog.$inferInsert;

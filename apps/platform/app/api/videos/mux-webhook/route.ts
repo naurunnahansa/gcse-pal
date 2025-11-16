@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { db, lessons } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 import Mux from '@mux/mux-node';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 // Initialize Mux
 const mux = new Mux({
@@ -72,18 +73,20 @@ async function handleAssetCreated(event: any) {
   const { object } = event.data;
 
   // Find the lesson associated with this upload
-  const lesson = await prisma.lesson.findFirst({
-    where: { muxUploadId: object.upload_id },
-  });
+  const lessonRecords = await db.select()
+    .from(lessons)
+    .where(eq(lessons.muxUploadId, object.upload_id))
+    .limit(1);
+
+  const lesson = lessonRecords[0];
 
   if (lesson) {
-    await prisma.lesson.update({
-      where: { id: lesson.id },
-      data: {
+    await db.update(lessons)
+      .set({
         muxAssetId: object.asset_id,
         muxStatus: 'processing',
-      },
-    });
+      })
+      .where(eq(lessons.id, lesson.id));
 
     console.log(`Asset created for lesson ${lesson.id}: ${object.asset_id}`);
   }
@@ -93,23 +96,25 @@ async function handleAssetReady(event: any) {
   const { object } = event.data;
 
   // Find the lesson associated with this asset
-  const lesson = await prisma.lesson.findFirst({
-    where: { muxAssetId: object.asset_id },
-  });
+  const lessonRecords = await db.select()
+    .from(lessons)
+    .where(eq(lessons.muxAssetId, object.asset_id))
+    .limit(1);
+
+  const lesson = lessonRecords[0];
 
   if (lesson) {
     // Get the playback URL
     const asset = await mux.video.assets.retrieve(object.asset_id);
     const playbackId = asset.playback_ids?.[0]?.id;
 
-    await prisma.lesson.update({
-      where: { id: lesson.id },
-      data: {
+    await db.update(lessons)
+      .set({
         muxStatus: 'ready',
         videoUrl: playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null,
         videoDuration: Math.round((object.duration || 0) * 1000), // Convert to milliseconds
-      },
-    });
+      })
+      .where(eq(lessons.id, lesson.id));
 
     console.log(`Asset ready for lesson ${lesson.id}: ${object.asset_id}`);
   }
@@ -119,18 +124,20 @@ async function handleAssetError(event: any) {
   const { object } = event.data;
 
   // Find the lesson associated with this upload
-  const lesson = await prisma.lesson.findFirst({
-    where: { muxUploadId: object.upload_id },
-  });
+  const lessonRecords = await db.select()
+    .from(lessons)
+    .where(eq(lessons.muxUploadId, object.upload_id))
+    .limit(1);
+
+  const lesson = lessonRecords[0];
 
   if (lesson) {
-    await prisma.lesson.update({
-      where: { id: lesson.id },
-      data: {
+    await db.update(lessons)
+      .set({
         muxStatus: 'error',
         videoUrl: null,
-      },
-    });
+      })
+      .where(eq(lessons.id, lesson.id));
 
     console.error(`Asset error for lesson ${lesson.id}: ${object.asset_id}`, event.data.error);
   }

@@ -12,8 +12,7 @@ import {
   findEnrollment,
   findLessonById
 } from '@/lib/db/queries';
-import { eq, and } from 'drizzle-orm';
-import { drizzleCount as count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 
 // GET /api/lessons/[lessonId] - Fetch a specific lesson with details
 export async function GET(
@@ -232,74 +231,87 @@ export async function POST(
     const existingProgress = existingProgressResult[0] || null;
 
     // Create or update progress
-    const progress = await prisma.progress.upsert({
-      where: {
-        id: existingProgress?.id || '',
-      },
-      update: {
-        status: status || 'in_progress',
-        timeSpent: timeSpent || 0,
-        score: score,
-        startedAt: status === 'completed' && !existingProgress?.startedAt ? new Date() : existingProgress?.startedAt,
-        completedAt: status === 'completed' ? new Date() : null,
-        lastAccessed: new Date(),
-      },
-      create: {
-        userId: user.id,
-        courseId: lesson.chapter.course.id,
-        chapterId: lesson.chapter.id,
-        lessonId: lesson.id,
-        status: status || 'in_progress',
-        timeSpent: timeSpent || 0,
-        score: score,
-        startedAt: new Date(),
-        lastAccessed: new Date(),
-      },
-    });
+    let progressResult;
+    if (existingProgress) {
+      // Update existing progress
+      const updateResult = await db.update(progress)
+        .set({
+          status: status || 'in_progress',
+          timeSpent: timeSpent || 0,
+          score: score,
+          startedAt: status === 'completed' && !existingProgress?.startedAt ? new Date() : existingProgress?.startedAt,
+          completedAt: status === 'completed' ? new Date() : null,
+          lastAccessed: new Date(),
+        })
+        .where(eq(progress.id, existingProgress.id))
+        .returning();
+      progressResult = updateResult[0];
+    } else {
+      // Create new progress
+      const insertResult = await db.insert(progress)
+        .values({
+          userId: user.id,
+          courseId: lesson.chapter.course.id,
+          chapterId: lesson.chapter.id,
+          lessonId: lesson.id,
+          status: status || 'in_progress',
+          timeSpent: timeSpent || 0,
+          score: score,
+          startedAt: new Date(),
+          lastAccessed: new Date(),
+        })
+        .returning();
+      progressResult = insertResult[0];
+    }
 
     // If lesson is completed, update course progress
     if (status === 'completed') {
-      const totalLessons = await prisma.lesson.count({
-        where: { chapterId: lesson.chapter.id },
-      });
+      // Get total lessons in chapter
+      const totalLessonsResult = await db.select({ count: count() })
+        .from(lessons)
+        .where(eq(lessons.chapterId, lesson.chapter.id));
 
-      const completedLessons = await prisma.progress.count({
-        where: {
-          userId: user.id,
-          chapterId: lesson.chapter.id,
-          status: 'completed',
-        },
-      });
+      const totalLessons = totalLessonsResult[0]?.count || 0;
 
-      const chapterProgress = Math.round((completedLessons / totalLessons) * 100);
+      // Get completed lessons in chapter
+      const completedLessonsResult = await db.select({ count: count() })
+        .from(progress)
+        .where(and(
+          eq(progress.userId, user.id),
+          eq(progress.chapterId, lesson.chapter.id),
+          eq(progress.status, 'completed')
+        ));
+
+      const completedLessons = completedLessonsResult[0]?.count || 0;
+      const chapterProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
       // Update enrollment progress
-      const totalCourseLessons = await prisma.lesson.count({
-        where: {
-          chapter: {
-            courseId: lesson.chapter.course.id,
-          },
-        },
-      });
+      const totalCourseLessonsResult = await db.select({ count: count() })
+        .from(lessons)
+        .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
+        .where(eq(chapters.courseId, lesson.chapter.course.id));
 
-      const totalCourseCompletedLessons = await prisma.progress.count({
-        where: {
-          userId: user.id,
-          courseId: lesson.chapter.course.id,
-          status: 'completed',
-        },
-      });
+      const totalCourseLessons = totalCourseLessonsResult[0]?.count || 0;
 
-      const courseProgress = Math.round((totalCourseCompletedLessons / totalCourseLessons) * 100);
+      const totalCourseCompletedLessonsResult = await db.select({ count: count() })
+        .from(progress)
+        .where(and(
+          eq(progress.userId, user.id),
+          eq(progress.courseId, lesson.chapter.course.id),
+          eq(progress.status, 'completed')
+        ));
 
-      await prisma.enrollment.update({
-        where: { id: enrollment.id },
-        data: {
+      const totalCourseCompletedLessons = totalCourseCompletedLessonsResult[0]?.count || 0;
+      const courseProgress = totalCourseLessons > 0 ? Math.round((totalCourseCompletedLessons / totalCourseLessons) * 100) : 0;
+
+      // Update enrollment
+      await db.update(enrollments)
+        .set({
           progress: courseProgress,
           status: courseProgress === 100 ? 'completed' : 'active',
           completedAt: courseProgress === 100 ? new Date() : null,
-        },
-      });
+        })
+        .where(eq(enrollments.id, enrollment.id));
     }
 
     return NextResponse.json({

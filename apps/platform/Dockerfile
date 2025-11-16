@@ -20,17 +20,14 @@ RUN npm install -g pnpm@8.15.0
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Remove Prisma config temporarily
-RUN cd apps/platform && rm -f prisma.config.ts
-
 # Install platform dependencies
 RUN cd apps/platform && pnpm install
 
 # Set environment variables for build
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bWFpbi1iYXNzLTEuY2xlcmsuYWNjb3VudHMuZGV3JA
 
-# Generate Prisma client with correct binary targets
-RUN cd apps/platform && npx prisma generate
+# Generate Drizzle kit (no client generation needed)
+RUN cd apps/platform && npx drizzle-kit generate
 
 # Build the application
 RUN cd apps/platform && npm run build
@@ -56,11 +53,11 @@ COPY --from=builder /app/apps/platform/node_modules ./node_modules
 # Change to platform directory
 WORKDIR /app/apps/platform
 
-# Copy Prisma files
-COPY --from=builder /app/apps/platform/prisma ./prisma
+# Copy Drizzle migration files
+COPY --from=builder /app/apps/platform/lib/db/migrations ./lib/db/migrations
 
-# Generate Prisma client in production environment
-RUN npx prisma generate
+# Run Drizzle migrations in production environment (if needed)
+RUN npx drizzle-kit push
 
 USER nextjs
 

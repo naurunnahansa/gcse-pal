@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { UnifiedSidebar } from './UnifiedSidebar';
@@ -84,9 +85,22 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <div className="px-6 flex items-center gap-4">
-            <h1 className="text-lg font-semibold">
-              {subjectName || getPageTitle()}
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center">
+                <Image
+                  src="/badge-logo.png"
+                  alt="GCSEPal"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  quality={100}
+                  priority
+                />
+              </div>
+              <h1 className="text-lg font-semibold">
+                {subjectName || getPageTitle()}
+              </h1>
+            </div>
 
             {/* Course Tabs */}
             {showCourseTabs && courseId && (
