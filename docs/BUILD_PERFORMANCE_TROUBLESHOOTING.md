@@ -36,22 +36,23 @@ This document addresses critical build performance issues in the GCSE Pal projec
 
 ## Solutions Implemented
 
-### 1. **Immediate Fix: Legacy Build Command**
+### 1. ✅ **FIXED: Default Build Command Now Works**
 
-Use the alternative build script that bypasses Turbopack:
+The default `pnpm run build` command has been fixed and now works reliably:
 
 ```bash
-# Option 1: Use the legacy build script
-pnpm run build:legacy
+# This now works by default! (uses optimized settings)
+pnpm run build
 
-# Option 2: Manual command with environment variables
-TURBOPACK=0 NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
+# If you need the original broken Turbopack build:
+pnpm run build:turbopack  # ⚠️ AVOID - this hangs
 ```
 
 **Expected Results:**
 - Build completes in **under 2 minutes** instead of hanging
 - Memory usage stays under 4GB
 - Reliable, repeatable builds
+- **No changes needed** to existing workflows
 
 ### 2. Configuration Changes
 
@@ -118,12 +119,16 @@ pnpm run dev
 
 ### For Production Builds
 ```bash
-# Use this command instead of regular build
-pnpm run build:legacy
+# Default build now works reliably (uses optimized settings)
+pnpm run build
 
 # Or for full monorepo build
 cd /Users/lilu/Desktop/gcse-pal
 pnpm run build
+
+# Legacy options (if needed)
+pnpm run build:legacy  # Same as default build
+pnpm run build:turbopack  # Original hanging build (AVOID)
 ```
 
 ### For CI/CD
