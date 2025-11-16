@@ -74,9 +74,9 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
     {
       title: 'Learning Tools',
       items: [
-        { name: 'Study Calendar', href: '/dashboard/tools/calendar', icon: Calendar },
-        { name: 'Tasks', href: '/dashboard/tools/tasks', icon: CheckSquare },
-        { name: 'Notes', href: '/dashboard/tools/notes', icon: FileText },
+        { name: 'Study Calendar', href: '/dashboard/tools/calendar', icon: Calendar, comingSoon: true },
+        { name: 'Tasks', href: '/dashboard/tools/tasks', icon: CheckSquare, comingSoon: true },
+        { name: 'Notes', href: '/dashboard/tools/notes', icon: FileText, comingSoon: true },
       ],
     },
     {
@@ -247,7 +247,14 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
                         title={item.name}
                       >
                         <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <div className="flex items-center gap-2">
                         <span>{item.name}</span>
+                        {item.comingSoon && (
+                          <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded-full font-medium">
+                            Coming Soon
+                          </span>
+                        )}
+                      </div>
                       </Link>
                     ))}
                   </CollapsibleContent>
@@ -277,7 +284,16 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({ userRole, isOpen, onOpe
                       title={isCollapsed ? item.name : undefined}
                     >
                       <item.icon className="h-4 w-4 flex-shrink-0" />
-                      {!isCollapsed && <span>{item.name}</span>}
+                      {!isCollapsed && (
+                        <div className="flex items-center gap-2">
+                          <span>{item.name}</span>
+                          {item.comingSoon && (
+                            <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded-full font-medium">
+                              Coming Soon
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   ))}
                 </div>

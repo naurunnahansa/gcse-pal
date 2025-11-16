@@ -195,18 +195,8 @@ describe('/api/auth/sync', () => {
         username: 'student_user',
       })
 
-      // Mock empty database result
-      const { db } = await import('@/lib/db')
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      } as any)
-
-      // Mock user sync
-      vi.mocked(syncUserWithDatabase).mockResolvedValue({
+      // Mock empty database result for first call, but return user for second call
+      const mockDbUser = {
         id: mockUsers.student.id,
         clerkId: mockUsers.student.userId,
         email: mockUsers.student.email,
@@ -215,7 +205,30 @@ describe('/api/auth/sync', () => {
         role: mockUsers.student.role,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      }
+
+      const { db } = await import('@/lib/db')
+
+      // Mock the first database call (returns empty)
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any)
+
+      // Mock the second database call (returns the created user)
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([mockDbUser]),
+          }),
+        }),
+      } as any)
+
+      // Mock user sync
+      vi.mocked(syncUserWithDatabase).mockResolvedValue(mockDbUser)
 
       const request = createMockRequest('http://localhost:3000/api/auth/sync', {
         userId: mockUsers.student.userId,

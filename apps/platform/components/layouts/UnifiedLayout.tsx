@@ -70,7 +70,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="h-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
       <UnifiedSidebar
         userRole={userRole}
@@ -193,7 +193,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         </header>
 
         {/* Page content */}
-        <main className={`flex-1 ${fullScreen ? 'bg-white' : 'bg-gray-50/50'}`}>
+        <main className={`flex-1 ${fullScreen ? 'bg-white' : 'bg-gray-50/50'} overflow-hidden`}>
           {children}
         </main>
       </div>
