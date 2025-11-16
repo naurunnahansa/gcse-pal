@@ -1,5 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { db, users, userSettings } from '@/lib/db/queries';
+import { db, users } from '@/lib/db/queries';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -84,26 +84,8 @@ export async function syncUserWithDatabase(clerkUserId: string) {
       user = newUsers[0];
     }
 
-    // Create default user settings if they don't exist
-    const existingSettings = await db.select()
-      .from(userSettings)
-      .where(eq(userSettings.userId, user.id))
-      .limit(1);
-
-    if (existingSettings.length === 0) {
-      await db.insert(userSettings)
-        .values({
-          userId: user.id,
-          theme: 'light',
-          emailNotifications: true,
-          pushNotifications: true,
-          studyReminders: true,
-          deadlineReminders: true,
-          dailyGoal: 60, // 60 minutes default
-          preferredStudyTime: 'evening',
-          studyDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday to Friday
-        });
-    }
+    // Note: userSettings table removed during schema simplification
+    // User preferences can be added back later if needed
 
     return user;
   } catch (error) {

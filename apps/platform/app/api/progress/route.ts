@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Ensure user exists in our database
-    const userRecord = await ensureUserExists();
+    await ensureUserExists(userId);
 
     const userResults = await db.select()
       .from(users)
@@ -43,8 +43,8 @@ export async function GET(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User not found in database' },
-        { status: 404 }
+        { success: false, error: 'Failed to create user in database' },
+        { status: 500 }
       );
     }
 

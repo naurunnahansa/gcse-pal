@@ -5,9 +5,7 @@ import {
   users,
   courses,
   enrollments,
-  studySessions,
   chapters,
-  userSettings
 } from '@/lib/db/queries';
 import { hasUserRole } from '@/lib/user-sync';
 import { eq, and, gte, lte, count, sum, avg, desc, inArray } from 'drizzle-orm';
@@ -41,7 +39,6 @@ export async function GET(req: NextRequest) {
       recentEnrollments,
       activeCoursesData,
       courseStats,
-      userProgress
     ] = await Promise.all([
       // Total students
       db.select({ count: count() })
@@ -100,12 +97,6 @@ export async function GET(req: NextRequest) {
       // User progress data
       db.select({ status: enrollments.status })
         .from(enrollments),
-
-      // Study session data for engagement metrics
-      db.select({ total: sum(studySessions.duration), count: count() })
-        .from(studySessions)
-        .where(gte(studySessions.startTime, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
-        .then(result => result[0] || { total: 0, count: 0 })
     ]);
 
     // Calculate additional metrics
@@ -227,7 +218,7 @@ export async function GET(req: NextRequest) {
       {
         title: "Active Courses",
         value: publishedCourses.toString(),
-        change: `+${activeCourses}`,
+        change: `+${activeCoursesData}`,
         icon: "BookOpen",
         color: "text-green-600"
       },
@@ -261,7 +252,7 @@ export async function GET(req: NextRequest) {
           activeCourses: activeCoursesData,
           recentEnrollments,
           avgCompletionRate: Math.round(avgCompletionRate),
-          totalStudyTime: userProgress.total || 0
+          totalStudyTime: 0 // Would need implementation using lessonProgress.timeSpentSeconds
         }
       }
     });

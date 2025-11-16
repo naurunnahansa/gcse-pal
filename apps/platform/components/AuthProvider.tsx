@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useState } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
 
 interface User {
@@ -31,6 +31,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { isSignedIn, user, isLoaded } = useUser();
   const clerk = useClerk();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Sync user with our database when they sign in
+  useEffect(() => {
+    const syncUser = async () => {
+      if (isSignedIn && user && isLoaded) {
+        try {
+          // Call our auth sync endpoint to ensure user exists in database
+          const response = await fetch('/api/auth/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            console.error('Failed to sync user with database');
+            // Don't throw error here, just log it since user can still use the app
+          } else {
+            const result = await response.json();
+            console.log('User synced successfully:', result.data);
+          }
+        } catch (error) {
+          console.error('Error syncing user:', error);
+          // Don't block the user from using the app if sync fails
+        }
+      }
+    };
+
+    syncUser();
+  }, [isSignedIn, user, isLoaded]);
 
   const updateUser = (clerkUser: any): User | null => {
     if (!clerkUser) return null;

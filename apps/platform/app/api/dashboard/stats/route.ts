@@ -6,6 +6,7 @@ import {
   getUserCourseStats,
   getQuizPerformanceStats,
 } from '@/lib/db/queries';
+import { ensureUserExists } from '@/lib/clerk-helper';
 
 // GET /api/dashboard/stats - Get user dashboard statistics
 export async function GET(req: NextRequest) {
@@ -18,12 +19,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Ensure user exists in our database
+    await ensureUserExists(userId);
+
     // Get user from database
     const user = await findUserByClerkId(userId);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User not found in database' },
-        { status: 404 }
+        { success: false, error: 'Failed to create user in database' },
+        { status: 500 }
       );
     }
 

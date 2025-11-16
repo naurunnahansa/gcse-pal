@@ -15,6 +15,7 @@ import {
   createCourseWithSlug
 } from '@/lib/db';
 import { eq, and, or, desc, asc, count as drizzleCount, inArray } from 'drizzle-orm';
+import { ensureUserExists } from '@/lib/clerk-helper';
 
 // GET /api/courses - Fetch all courses with optional filtering
 export async function GET(req: NextRequest) {
@@ -116,15 +117,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Ensure user exists in our database
+    await ensureUserExists(userId);
+
     // Check if user is admin or teacher
     let user = await findUserByClerkId(userId);
 
-    // Create user if not exists
     if (!user) {
-      // This shouldn't happen if sync endpoint is called, but just in case
       return NextResponse.json(
-        { success: false, error: 'User not found. Please sync first.' },
-        { status: 404 }
+        { success: false, error: 'Failed to create user in database' },
+        { status: 500 }
       );
     }
 
