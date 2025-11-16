@@ -7,11 +7,11 @@ import {
   chapters,
   lessons,
   enrollments,
-  progress,
+  lessonProgress,
   findUserByClerkId,
   findEnrollment,
   findLessonById
-} from '@/lib/db/queries';
+} from '@/lib/db';
 import { eq, and, count } from 'drizzle-orm';
 
 // GET /api/lessons/[lessonId] - Fetch a specific lesson with details
@@ -99,29 +99,33 @@ export async function GET(
 
     // Get user progress for this lesson
     const progressResult = await db.select()
-      .from(progress)
+      .from(lessonProgress)
       .where(and(
-        eq(progress.userId, user.id),
-        eq(progress.lessonId, lesson.id)
+        eq(lessonProgress.userId, user.id),
+        eq(lessonProgress.lessonId, lesson.id)
       ))
       .limit(1);
 
-    const lessonProgress = progressResult[0] || null;
+    const lessonProgressData = progressResult[0] || null;
 
     // Format response
     const formattedLesson = {
       id: lesson.id,
       title: lesson.title,
       description: lesson.description,
-      content: lesson.content,
+      markdownContent: lesson.markdownContent,
       videoUrl: lesson.videoUrl,
-      videoDuration: lesson.videoDuration,
-      markdownPath: lesson.markdownPath,
+      videoDurationSeconds: lesson.videoDurationSeconds,
       duration: lesson.duration,
-      order: lesson.order,
+      position: lesson.position,
       isPublished: lesson.isPublished,
-      hasVideo: lesson.hasVideo,
-      hasMarkdown: lesson.hasMarkdown,
+      isPreview: lesson.isPreview,
+      contentType: lesson.contentType,
+      // Mux video integration fields
+      muxAssetId: lesson.muxAssetId,
+      muxPlaybackId: lesson.muxPlaybackId,
+      muxUploadId: lesson.muxUploadId,
+      muxStatus: lesson.muxStatus,
       chapter: {
         id: chapter.id,
         title: chapter.title,
@@ -130,13 +134,13 @@ export async function GET(
           title: course.title,
         },
       },
-      userProgress: lessonProgress ? {
-        id: lessonProgress.id,
-        status: lessonProgress.status,
-        startedAt: lessonProgress.startedAt,
-        completedAt: lessonProgress.completedAt,
-        timeSpent: lessonProgress.timeSpent,
-        score: lessonProgress.score,
+      userProgress: lessonProgressData ? {
+        id: lessonProgressData.id,
+        status: lessonProgressData.status,
+        startedAt: lessonProgressData.startedAt,
+        completedAt: lessonProgressData.completedAt,
+        timeSpentSeconds: lessonProgressData.timeSpentSeconds,
+        videoPositionSeconds: lessonProgressData.videoPositionSeconds,
       } : null,
     };
 
@@ -169,7 +173,7 @@ export async function POST(
 
     const { lessonId } = await params;
     const body = await req.json();
-    const { status, timeSpent, score } = body;
+    const { status, timeSpentSeconds, videoPositionSeconds } = body;
 
     // Get user from database
     const user = await findUserByClerkId(userId);
@@ -221,106 +225,56 @@ export async function POST(
 
     // Check if progress record already exists
     const existingProgressResult = await db.select()
-      .from(progress)
+      .from(lessonProgress)
       .where(and(
-        eq(progress.userId, user.id),
-        eq(progress.lessonId, lesson.id)
+        eq(lessonProgress.userId, user.id),
+        eq(lessonProgress.lessonId, lesson.id)
       ))
       .limit(1);
 
     const existingProgress = existingProgressResult[0] || null;
 
-    // Create or update progress
+    // Create or update progress using simplified logic
     let progressResult;
     if (existingProgress) {
       // Update existing progress
-      const updateResult = await db.update(progress)
+      const updateResult = await db.update(lessonProgress)
         .set({
           status: status || 'in_progress',
-          timeSpent: timeSpent || 0,
-          score: score,
+          timeSpentSeconds: timeSpentSeconds || 0,
+          videoPositionSeconds: videoPositionSeconds || 0,
           startedAt: status === 'completed' && !existingProgress?.startedAt ? new Date() : existingProgress?.startedAt,
           completedAt: status === 'completed' ? new Date() : null,
-          lastAccessed: new Date(),
         })
-        .where(eq(progress.id, existingProgress.id))
+        .where(eq(lessonProgress.id, existingProgress.id))
         .returning();
       progressResult = updateResult[0];
     } else {
       // Create new progress
-      const insertResult = await db.insert(progress)
+      const insertResult = await db.insert(lessonProgress)
         .values({
           userId: user.id,
-          courseId: lesson.chapter.course.id,
-          chapterId: lesson.chapter.id,
+          courseId: chapter.courseId,
           lessonId: lesson.id,
           status: status || 'in_progress',
-          timeSpent: timeSpent || 0,
-          score: score,
+          timeSpentSeconds: timeSpentSeconds || 0,
+          videoPositionSeconds: videoPositionSeconds || 0,
           startedAt: new Date(),
-          lastAccessed: new Date(),
         })
         .returning();
       progressResult = insertResult[0];
     }
 
-    // If lesson is completed, update course progress
-    if (status === 'completed') {
-      // Get total lessons in chapter
-      const totalLessonsResult = await db.select({ count: count() })
-        .from(lessons)
-        .where(eq(lessons.chapterId, lesson.chapter.id));
-
-      const totalLessons = totalLessonsResult[0]?.count || 0;
-
-      // Get completed lessons in chapter
-      const completedLessonsResult = await db.select({ count: count() })
-        .from(progress)
-        .where(and(
-          eq(progress.userId, user.id),
-          eq(progress.chapterId, lesson.chapter.id),
-          eq(progress.status, 'completed')
-        ));
-
-      const completedLessons = completedLessonsResult[0]?.count || 0;
-      const chapterProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-
-      // Update enrollment progress
-      const totalCourseLessonsResult = await db.select({ count: count() })
-        .from(lessons)
-        .innerJoin(chapters, eq(lessons.chapterId, chapters.id))
-        .where(eq(chapters.courseId, lesson.chapter.course.id));
-
-      const totalCourseLessons = totalCourseLessonsResult[0]?.count || 0;
-
-      const totalCourseCompletedLessonsResult = await db.select({ count: count() })
-        .from(progress)
-        .where(and(
-          eq(progress.userId, user.id),
-          eq(progress.courseId, lesson.chapter.course.id),
-          eq(progress.status, 'completed')
-        ));
-
-      const totalCourseCompletedLessons = totalCourseCompletedLessonsResult[0]?.count || 0;
-      const courseProgress = totalCourseLessons > 0 ? Math.round((totalCourseCompletedLessons / totalCourseLessons) * 100) : 0;
-
-      // Update enrollment
-      await db.update(enrollments)
-        .set({
-          progress: courseProgress,
-          status: courseProgress === 100 ? 'completed' : 'active',
-          completedAt: courseProgress === 100 ? new Date() : null,
-        })
-        .where(eq(enrollments.id, enrollment.id));
-    }
+    // Note: Course progress updates are now handled by separate progress tracking endpoints
+    // This keeps the lesson API focused on lesson-specific progress
 
     return NextResponse.json({
       success: true,
       data: {
-        id: progress.id,
-        status: progress.status,
-        timeSpent: progress.timeSpent,
-        score: progress.score,
+        id: progressResult.id,
+        status: progressResult.status,
+        timeSpentSeconds: progressResult.timeSpentSeconds,
+        videoPositionSeconds: progressResult.videoPositionSeconds,
       },
     });
   } catch (error) {

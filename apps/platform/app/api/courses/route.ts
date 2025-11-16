@@ -11,8 +11,9 @@ import {
   updateUser,
   findCoursesWithFilters,
   countCourses,
-  createUser
-} from '@/lib/db/queries';
+  createUser,
+  createCourseWithSlug
+} from '@/lib/db';
 import { eq, and, or, desc, asc, count as drizzleCount, inArray } from 'drizzle-orm';
 
 // GET /api/courses - Fetch all courses with optional filtering
@@ -24,7 +25,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get('subject');
     const level = searchParams.get('level');
-    const difficulty = searchParams.get('difficulty');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -34,7 +34,6 @@ export async function GET(req: NextRequest) {
       status: 'published',
       subject: subject || undefined,
       level: level || undefined,
-      difficulty: difficulty || undefined,
       search: search || undefined
     });
 
@@ -42,7 +41,6 @@ export async function GET(req: NextRequest) {
     const coursesData = await findCoursesWithFilters({
       subject: subject || undefined,
       level: level || undefined,
-      difficulty: difficulty || undefined,
       search: search || undefined,
       status: 'published',
       page,
@@ -59,7 +57,7 @@ export async function GET(req: NextRequest) {
         })
           .from(chapters)
           .where(eq(chapters.courseId, course.id))
-          .orderBy(asc(chapters.order));
+          .orderBy(asc(chapters.position));
 
         // Get enrollment count for this course
         const enrollmentCountResult = await db.select({ count: drizzleCount() })
@@ -74,17 +72,14 @@ export async function GET(req: NextRequest) {
           description: course.description,
           subject: course.subject,
           level: course.level,
-          thumbnail: course.thumbnail,
-          instructor: course.instructor,
-          duration: course.duration,
-          difficulty: course.difficulty,
-          topics: course.topics,
+          thumbnailUrl: course.thumbnailUrl,
+          slug: course.slug,
           enrollmentCount,
-          rating: course.rating,
-          price: course.price,
           chaptersCount: courseChapters.length,
           chapters: courseChapters,
+          status: course.status,
           createdAt: course.createdAt,
+          updatedAt: course.updatedAt,
         };
       })
     );
@@ -158,19 +153,14 @@ export async function POST(req: NextRequest) {
       description,
       subject,
       level,
-      thumbnail,
-      instructor,
-      duration,
-      difficulty,
-      topics,
-      price,
+      thumbnailUrl,
       status,
       chapters,
     } = body;
 
-    if (!title || !description || !subject || !instructor) {
+    if (!title || !description || !subject) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: title, description, subject, instructor' },
+        { success: false, error: 'Missing required fields: title, description, subject' },
         { status: 400 }
       );
     }
@@ -184,13 +174,8 @@ export async function POST(req: NextRequest) {
           description,
           subject,
           level: level || 'gcse',
-          thumbnail,
-          instructor,
-          instructorId: user.id,
-          duration: duration || 0,
-          difficulty: difficulty || 'beginner',
-          topics: topics || [],
-          price: price || 0,
+          thumbnailUrl,
+          createdBy: user.id,
           status: status || 'draft',
         })
         .returning();
@@ -199,7 +184,8 @@ export async function POST(req: NextRequest) {
 
       // If chapters are provided, create them with lessons
       if (chapters && Array.isArray(chapters) && chapters.length > 0) {
-        for (const [index, chapterData] of chapters.entries()) {
+        for (let index = 0; index < chapters.length; index++) {
+          const chapterData = chapters[index];
           if (!chapterData.title || !chapterData.title.trim()) {
             throw new Error(`Chapter ${index + 1} title is required`);
           }
@@ -209,7 +195,7 @@ export async function POST(req: NextRequest) {
               courseId: course.id,
               title: chapterData.title,
               description: chapterData.description || '',
-              order: index,
+              position: index,
               duration: chapterData.duration || 0,
               isPublished: chapterData.isPublished || false,
             })
@@ -219,7 +205,8 @@ export async function POST(req: NextRequest) {
 
           // Create lessons for this chapter if provided
           if (chapterData.lessons && Array.isArray(chapterData.lessons) && chapterData.lessons.length > 0) {
-            for (const [lessonIndex, lessonData] of chapterData.lessons.entries()) {
+            for (let lessonIndex = 0; lessonIndex < chapterData.lessons.length; lessonIndex++) {
+              const lessonData = chapterData.lessons[lessonIndex];
               if (!lessonData.title || !lessonData.title.trim()) {
                 throw new Error(`Lesson ${lessonIndex + 1} in chapter ${chapterData.title} title is required`);
               }
@@ -229,15 +216,14 @@ export async function POST(req: NextRequest) {
                   chapterId: chapter.id,
                   title: lessonData.title,
                   description: lessonData.description || '',
-                  content: lessonData.content,
+                  markdownContent: lessonData.markdownContent,
                   videoUrl: lessonData.videoUrl,
-                  videoDuration: lessonData.videoDuration,
-                  markdownPath: lessonData.markdownPath,
-                  hasVideo: !!lessonData.videoUrl,
-                  hasMarkdown: !!lessonData.markdownPath || !!lessonData.content,
-                  order: lessonIndex,
+                  videoDurationSeconds: lessonData.videoDurationSeconds,
+                  position: lessonIndex,
                   duration: lessonData.duration || 0,
                   isPublished: lessonData.isPublished || false,
+                  isPreview: lessonData.isPreview || false,
+                  contentType: lessonData.contentType || 'mixed',
                 });
             }
           }
@@ -250,7 +236,7 @@ export async function POST(req: NextRequest) {
         courseId: chapters.courseId,
         title: chapters.title,
         description: chapters.description,
-        order: chapters.order,
+        position: chapters.position,
         duration: chapters.duration,
         isPublished: chapters.isPublished,
         createdAt: chapters.createdAt,
@@ -258,7 +244,7 @@ export async function POST(req: NextRequest) {
       })
         .from(chapters)
         .where(eq(chapters.courseId, course.id))
-        .orderBy(asc(chapters.order));
+        .orderBy(asc(chapters.position));
 
       // Get lessons for each chapter
       const chaptersWithLessons = await Promise.all(
@@ -266,7 +252,7 @@ export async function POST(req: NextRequest) {
           const chapterLessons = await tx.select()
             .from(lessons)
             .where(eq(lessons.chapterId, chapter.id))
-            .orderBy(asc(lessons.order));
+            .orderBy(asc(lessons.position));
 
           return {
             ...chapter,
