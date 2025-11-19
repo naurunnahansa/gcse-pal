@@ -530,11 +530,11 @@ const EditCoursePage = () => {
         switch (e.key) {
           case 's':
             e.preventDefault();
-            saveCourse(false);
+            saveCourse('draft');
             break;
           case 'Enter':
             e.preventDefault();
-            saveCourse(true);
+            saveCourse('published');
             break;
         }
       }

@@ -25,6 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 
 const AdminSettingsPage = () => {
   const { user, isAuthenticated } = useAuth();

@@ -1,8 +1,10 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 
-// Export the Drizzle database instance
+// Export the Drizzle database instance and schema
 export { db };
+export * from './db/schema';
+export * from './db/queries';
 
 // Helper function for database operations with error handling
 export async function withDatabase<T>(

@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Video, Edit3, Download, FileJson, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
+import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
 
 interface Chapter {
   id: string;

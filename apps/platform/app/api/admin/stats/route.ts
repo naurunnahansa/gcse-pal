@@ -80,15 +80,11 @@ export async function GET(req: NextRequest) {
         title: courses.title,
         description: courses.description,
         subject: courses.subject,
-        difficulty: courses.difficulty,
         status: courses.status,
-        instructor: courses.instructor,
-        createdAt: courses.createdAt,
-        duration: courses.duration,
-        thumbnail: courses.thumbnail,
         level: courses.level,
-        enrollmentCount: courses.enrollmentCount,
-        rating: courses.rating,
+        thumbnailUrl: courses.thumbnailUrl,
+        createdAt: courses.createdAt,
+        publishedAt: courses.publishedAt,
       })
         .from(courses)
         .orderBy(desc(courses.createdAt))
@@ -156,7 +152,9 @@ export async function GET(req: NextRequest) {
             : 'Never'
         };
       })
-    ).filter(Boolean); // Remove any null entries
+    );
+
+    const studentsData = formattedStudents.filter(Boolean); // Remove any null entries
 
     // Get chapter counts for courses
     const courseIds = courseStats.map(course => course.id);
@@ -196,16 +194,15 @@ export async function GET(req: NextRequest) {
         title: course.title || 'Untitled Course',
         description: course.description || '',
         subject: course.subject || 'Unknown',
-        difficulty: course.difficulty || 'Beginner',
+        level: course.level || 'gcse',
         status: course.status || 'draft',
         students: enrollmentCount,
-        avgScore: course.rating || 0,
+        avgScore: 0, // TODO: Calculate from quiz attempts
         completion: Math.round(Math.random() * 100), // TODO: Calculate actual completion rate
-        author: course.instructor || 'Unknown',
+        author: 'Unknown', // TODO: Get from user relation
         createdAt: course.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-        duration: course.duration || 0,
-        thumbnail: course.thumbnail,
-        level: course.level || 'Beginner',
+        duration: 0, // TODO: Calculate from chapters
+        thumbnail: course.thumbnailUrl,
         chaptersCount: chapterCount
       };
     }).filter(Boolean); // Remove any null entries
@@ -228,7 +225,7 @@ export async function GET(req: NextRequest) {
       },
       {
         title: "Avg Completion",
-        value: `${Math.round(avgCompletionRateResult || 0)}%`,
+        value: `${Math.round(Number(avgCompletionRateResult) || 0)}%`,
         change: "+5%",
         icon: "Target",
         color: "text-purple-600"
@@ -254,7 +251,7 @@ export async function GET(req: NextRequest) {
         totalEnrollments: totalEnrollments || 0,
         activeCourses: activeCoursesData || 0,
         recentEnrollments: recentEnrollments || 0,
-        avgCompletionRate: Math.round(avgCompletionRateResult || 0),
+        avgCompletionRate: Math.round(Number(avgCompletionRateResult) || 0),
         totalStudyTime: 0
       }
     };
