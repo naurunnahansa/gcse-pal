@@ -1,10 +1,13 @@
 import { db } from './db/index';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte } from 'drizzle-orm';
 
 // Export the Drizzle database instance and schema
 export { db };
 export * from './db/schema';
 export * from './db/queries';
+
+// Export Drizzle ORM operators
+export { eq, and, or, desc, asc, like, ilike, inArray, count, gte, lte };
 
 // Helper function for database operations with error handling
 export async function withDatabase<T>(

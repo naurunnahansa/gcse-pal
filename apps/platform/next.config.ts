@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Configure Turbopack for monorepo
   turbopack: {
-    root: '../../', // Point to workspace root
+    root: '../../', // Point to workspace root where Next.js is installed
   },
 
   // Disable TypeScript completely for build stability
