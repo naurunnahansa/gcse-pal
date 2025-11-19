@@ -73,30 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           } catch (syncError) {
             if (syncError.name === 'AbortError') {
-              console.warn('⏰ Main sync endpoint timed out, trying bypass...');
-
-              // Fallback to bypass endpoint
-              const bypassController = new AbortController();
-              const bypassTimeoutId = setTimeout(() => bypassController.abort(), 10000);
-
-              try {
-                response = await fetch('/api/auth/sync-bypass', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  signal: bypassController.signal,
-                });
-                clearTimeout(bypassTimeoutId);
-                console.log('🔄 Using bypass sync endpoint');
-              } catch (bypassError) {
-                if (bypassError.name === 'AbortError') {
-                  console.error('⏰ Bypass sync endpoint also timed out');
-                } else {
-                  console.error('💥 Bypass sync error:', bypassError);
-                }
-                return;
-              }
+              console.error('⏰ Sync endpoint timed out');
+              return;
             } else {
               throw syncError;
             }
