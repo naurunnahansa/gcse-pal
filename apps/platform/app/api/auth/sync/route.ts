@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { db, users } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/queries';
 import { getAuthenticatedUser, syncUserWithDatabase } from '@/lib/clerk-helper';
 import { eq } from 'drizzle-orm';
 
