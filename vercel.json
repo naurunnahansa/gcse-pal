@@ -1,8 +1,3 @@
 {
-  "version": 2,
-  "framework": "nextjs",
-  "rootDirectory": "apps/platform",
-  "buildCommand": "npm run build:vercel",
-  "installCommand": "npm install",
-  "outputDirectory": ".next"
+  "version": 2
 }
