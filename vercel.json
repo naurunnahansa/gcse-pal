@@ -1,4 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter platform run build:vercel"
+  "buildCommand": "pnpm --filter platform run build:vercel",
+  "rootDirectory": "apps/platform"
 }
