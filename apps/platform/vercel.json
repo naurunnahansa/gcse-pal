@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build:vercel",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_APP_URL": {
+      "description": "The public URL of your app (e.g., https://your-app.vercel.app)",
+      "required": true
+    },
+    "ANTHROPIC_API_KEY": {
+      "description": "Your Anthropic API key for AI functionality",
+      "required": true
+    },
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+      "description": "Your Clerk publishable key for authentication",
+      "required": true
+    },
+    "CLERK_SECRET_KEY": {
+      "description": "Your Clerk secret key for authentication",
+      "required": true
+    },
+    "CLERK_WEBHOOK_SECRET": {
+      "description": "Your Clerk webhook secret for user sync (optional)",
+      "required": false
+    },
+    "DATABASE_URL": {
+      "description": "Your PostgreSQL database connection string",
+      "required": true
+    },
+    "MUX_TOKEN_ID": {
+      "description": "Your Mux token ID for video processing",
+      "required": true
+    },
+    "MUX_TOKEN_SECRET": {
+      "description": "Your Mux token secret for video processing",
+      "required": true
+    },
+    "MUX_WEBHOOK_SIGNING_SECRET": {
+      "description": "Your Mux webhook signing secret",
+      "required": true
+    }
+  }
+}
