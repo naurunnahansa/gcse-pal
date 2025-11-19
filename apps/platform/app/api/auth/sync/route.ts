@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     console.log('🔄 Starting database sync...');
 
     // Sync user with database using Clerk data
-    const user = await syncUserWithDatabase(clerkUser.userId);
+    const user = await syncUserWithDatabase(clerkUser.userId, clerkUser.clerkUserData);
     const dbTime = Date.now();
 
     console.log('🕐 DB sync time:', dbTime - clerkTime, 'ms');

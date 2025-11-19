@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Try the main sync endpoint first with timeout
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15 seconds
 
           let response;
           try {
