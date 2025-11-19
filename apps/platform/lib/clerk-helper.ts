@@ -27,6 +27,8 @@ export async function getAuthenticatedUser() {
       username: clerkUserData.username,
       firstName: clerkUserData.firstName,
       lastName: clerkUserData.lastName,
+      // Include full Clerk user data for sync operations
+      clerkUserData: clerkUserData,
     };
   } catch (error) {
     console.error('Error getting authenticated user:', error);
@@ -37,16 +39,17 @@ export async function getAuthenticatedUser() {
 /**
  * Sync or create a user in our database based on Clerk data
  */
-export async function syncUserWithDatabase(clerkUserId: string) {
+export async function syncUserWithDatabase(clerkUserId: string, clerkUserData?: any) {
   try {
-    const clerkUserData = await currentUser();
-    if (!clerkUserData) {
+    // Use provided user data or fetch if not provided
+    const userData = clerkUserData || await currentUser();
+    if (!userData) {
       throw new Error('User not found in Clerk');
     }
 
-    const email = clerkUserData.emailAddresses[0]?.emailAddress;
-    const name = `${clerkUserData.firstName || ''} ${clerkUserData.lastName || ''}`.trim() || clerkUserData.username || 'User';
-    const avatar = clerkUserData.imageUrl;
+    const email = userData.emailAddresses[0]?.emailAddress;
+    const name = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username || 'User';
+    const avatar = userData.imageUrl;
 
     if (!email) {
       throw new Error('User email not found');

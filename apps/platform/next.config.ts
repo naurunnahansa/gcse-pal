@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Configure Turbopack for monorepo
+  turbopack: {
+    root: '../../', // Point to workspace root where Next.js is installed
+  },
+
   // Disable TypeScript completely for build stability
   typescript: {
     ignoreBuildErrors: true,
@@ -17,10 +22,10 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
 
-  // Disable experimental features temporarily for build stability
-  // experimental: {
-  //   optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
-  // },
+  // Experimental features for Turbopack
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+  },
 };
 
 export default nextConfig;

@@ -1,51 +1,24 @@
 import { useState, useEffect } from 'react';
+import {
+  StudentsAPI,
+  Student,
+  StudentStats,
+  StudentDetail,
+  StudentEnrollment,
+  StudentFilter
+} from '../lib/api/students';
 
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  grade: string;
-  enrolledCourses: number;
-  completedCourses: number;
-  studyTime: number;
-  lastActive: string;
-  status: 'active' | 'inactive' | 'at-risk';
-  progress: number;
-  createdAt?: string;
-  updatedAt?: string;
-  clerkId?: string;
-}
+// Re-export types for backward compatibility
+export type {
+  Student,
+  StudentStats,
+  StudentDetail,
+  StudentEnrollment,
+  StudentFilter
+};
 
-interface StudentStats {
-  total: number;
-  active: number;
-  inactive: number;
-  atRisk: number;
-  avgProgress: number;
-}
-
-interface StudentsResponse {
-  success: boolean;
-  data: {
-    students: Student[];
-    stats: StudentStats;
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-  } | null;
-  error?: string;
-}
-
-interface UseStudentsOptions {
+interface UseStudentsOptions extends StudentFilter {
   autoFetch?: boolean;
-  page?: number;
-  limit?: number;
-  search?: string;
-  grade?: string;
-  status?: string;
 }
 
 export const useStudents = (options: UseStudentsOptions = {}) => {
@@ -80,37 +53,27 @@ export const useStudents = (options: UseStudentsOptions = {}) => {
     setError(null);
 
     try {
-      const params = new URLSearchParams({
-        page: String(fetchOptions?.page || page),
-        limit: String(fetchOptions?.limit || limit),
-      });
+      const params: StudentFilter = {
+        page: fetchOptions?.page || page,
+        limit: fetchOptions?.limit || limit,
+        search: fetchOptions?.search || search,
+        grade: fetchOptions?.grade || grade,
+        status: fetchOptions?.status || status,
+      };
 
-      if (fetchOptions?.search || search) {
-        params.append('search', fetchOptions?.search || search);
-      }
+      const result = await StudentsAPI.getStudents(params);
 
-      if (fetchOptions?.grade || grade) {
-        params.append('grade', fetchOptions?.grade || grade);
-      }
-
-      if (fetchOptions?.status || status) {
-        params.append('status', fetchOptions?.status || status);
-      }
-
-      const response = await fetch(`/api/admin/students?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result: StudentsResponse = await response.json();
-
-      if (result.success && result.data) {
-        setStudents(result.data.students);
-        setStats(result.data.stats);
-        setPagination(result.data.pagination);
+      if (result) {
+        setStudents(result.students);
+        setStats(result.stats);
+        setPagination({
+          page: result.pagination.page,
+          limit: result.pagination.limit,
+          total: result.pagination.total,
+          pages: result.pagination.pages,
+        });
       } else {
-        throw new Error(result.error || 'Failed to fetch students');
+        throw new Error('No data returned');
       }
     } catch (err) {
       console.error('Error fetching students:', err);
@@ -186,19 +149,8 @@ export const useStudent = (studentId: string, options: UseStudentOptions = {}) =
     setError(null);
 
     try {
-      const response = await fetch(`/api/admin/students/${studentId}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setStudent(result.data);
-      } else {
-        throw new Error(result.error || 'Failed to fetch student');
-      }
+      const result = await StudentsAPI.getStudent(studentId);
+      setStudent(result);
     } catch (err) {
       console.error('Error fetching student:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch student');

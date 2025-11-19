@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { db, users } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/queries';
 import { getAuthenticatedUser, syncUserWithDatabase } from '@/lib/clerk-helper';
 import { eq } from 'drizzle-orm';
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     console.log('🔄 Starting database sync...');
 
     // Sync user with database using Clerk data
-    const user = await syncUserWithDatabase(clerkUser.userId);
+    const user = await syncUserWithDatabase(clerkUser.userId, clerkUser.clerkUserData);
     const dbTime = Date.now();
 
     console.log('🕐 DB sync time:', dbTime - clerkTime, 'ms');

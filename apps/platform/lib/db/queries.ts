@@ -1032,3 +1032,105 @@ export const getLessonWithQuiz = async (lessonId: string) => {
     quiz: quizData[0] || null,
   };
 };
+
+// ========================================
+// USER ITEMS SYSTEM (Stubs for compatibility)
+// ========================================
+
+// User item stubs - to be implemented
+export const userItems = [];
+export const itemTags = [];
+
+export const createUserItem = async (userData: any) => {
+  console.warn('createUserItem: Not implemented yet');
+  return null;
+};
+
+export const createItemTags = async (tagData: any) => {
+  console.warn('createItemTags: Not implemented yet');
+  return null;
+};
+
+export const findUserItems = async (userId: string) => {
+  console.warn('findUserItems: Not implemented yet');
+  return [];
+};
+
+export const findItemTags = async (itemId: string) => {
+  console.warn('findItemTags: Not implemented yet');
+  return [];
+};
+
+export const updateUserItem = async (itemId: string, updateData: any) => {
+  console.warn('updateUserItem: Not implemented yet');
+  return null;
+};
+
+export const deleteUserItem = async (itemId: string) => {
+  console.warn('deleteUserItem: Not implemented yet');
+  return true;
+};
+
+// Additional exports for compatibility
+export const quizAnswers = userAnswers; // Alias for compatibility
+
+export const getActivityInsights = async (userId: string) => {
+  console.warn('getActivityInsights: Not implemented yet');
+  return {
+    weeklyStats: [],
+    monthlyStats: [],
+    learningPatterns: [],
+    recommendations: [],
+  };
+};
+
+export const getUserPreferences = async (userId: string) => {
+  console.warn('getUserPreferences: Not implemented yet');
+  return {
+    learningGoals: [],
+    preferences: {},
+    notifications: true,
+  };
+};
+
+export const updateUserPreferences = async (userId: string, preferences: any) => {
+  console.warn('updateUserPreferences: Not implemented yet');
+  return true;
+};
+
+// Flashcard system stubs
+export const flashCards = [];
+export const flashCardReviews = [];
+
+export const findFlashCards = async (courseId: string) => {
+  console.warn('findFlashCards: Not implemented yet');
+  return [];
+};
+
+export const createFlashCard = async (cardData: any) => {
+  console.warn('createFlashCard: Not implemented yet');
+  return null;
+};
+
+export const updateFlashCard = async (cardId: string, updateData: any) => {
+  console.warn('updateFlashCard: Not implemented yet');
+  return null;
+};
+
+export const deleteFlashCard = async (cardId: string) => {
+  console.warn('deleteFlashCard: Not implemented yet');
+  return true;
+};
+
+// Evaluation system stubs
+export const evaluationStats = {
+  getStats: async (courseId: string) => {
+    console.warn('evaluationStats.getStats: Not implemented yet');
+    return {
+      averageScore: 0,
+      passRate: 0,
+      totalAttempts: 0,
+      recentPerformance: [],
+    };
+  },
+};

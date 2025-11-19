@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useProgress, ProgressData } from '@/hooks/useProgress';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -73,35 +74,7 @@ interface ProgressData {
 
 const ProgressPage = () => {
   const { user, isAuthenticated } = useAuth();
-  const [progressData, setProgressData] = useState<ProgressData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchProgressData();
-    }
-  }, [isAuthenticated, user]);
-
-  const fetchProgressData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/progress');
-      const data = await response.json();
-
-      if (data.success) {
-        setProgressData(data.data);
-      } else {
-        setError(data.error || 'Failed to fetch progress data');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-      console.error('Progress data fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: progressData, loading, error, refresh: fetchProgressData } = useProgress();
 
   const getIcon = (iconName: string) => {
     const icons: Record<string, React.ElementType> = {

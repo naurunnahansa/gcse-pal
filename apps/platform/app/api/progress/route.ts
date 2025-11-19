@@ -43,11 +43,24 @@ export async function GET(req: NextRequest) {
 
     console.log('User authenticated:', userId);
 
-    // Use raw SQL query to avoid ORM complexity
+    // First find the internal user UUID using Clerk ID
+    let userRecord = null;
     let enrollments = [];
+
     try {
-      enrollments = await client`SELECT id, user_id, course_id, enrolled_at FROM enrollments WHERE user_id = ${userId} LIMIT 10`;
-      console.log('Enrollments found:', enrollments.length);
+      // Find user by Clerk ID first
+      const users = await client`SELECT id FROM users WHERE clerk_id = ${userId} LIMIT 1`;
+
+      if (users.length > 0) {
+        userRecord = users[0];
+        console.log('Found internal user ID:', userRecord.id);
+
+        // Now query enrollments using the internal user UUID
+        enrollments = await client`SELECT id, user_id, course_id, enrolled_at FROM enrollments WHERE user_id = ${userRecord.id} LIMIT 10`;
+        console.log('Enrollments found:', enrollments.length);
+      } else {
+        console.log('User not found in database, Clerk ID:', userId);
+      }
     } catch (dbError) {
       console.error('Database query failed:', dbError);
       // Continue with empty enrollments if DB fails

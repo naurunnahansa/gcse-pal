@@ -1,3 +1,5 @@
+import { api, APIResponse } from '../api';
+
 export interface Course {
   id: string;
   title: string;
@@ -39,16 +41,16 @@ export interface Pagination {
   hasPrev: boolean;
 }
 
-export interface CourseResponse {
+export interface CourseListResponse {
   success: boolean;
   data: Course[];
   pagination: Pagination;
 }
 
 export class CoursesAPI {
-  private static baseUrl = '/api/courses';
+  private static basePath = '/courses';
 
-  static async getCourses(filters: CourseFilter = {}): Promise<CourseResponse> {
+  static async getCourses(filters: CourseFilter = {}): Promise<CourseListResponse> {
     const params = new URLSearchParams();
 
     Object.entries(filters).forEach(([key, value]) => {
@@ -57,58 +59,31 @@ export class CoursesAPI {
       }
     });
 
-    const url = `${this.baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch courses: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch courses');
-    }
-
-    return data;
+    const path = `${this.basePath}${params.toString() ? `?${params.toString()}` : ''}`;
+    return api.get<CourseListResponse>(path);
   }
 
   static async getCourse(id: string): Promise<Course> {
-    const response = await fetch(`${this.baseUrl}/${id}`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch course: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch course');
-    }
-
-    return data.data;
+    const response = await api.get<{ success: boolean; data: Course }>(`${this.basePath}/${id}`);
+    return response.data;
   }
 
   static async createCourse(courseData: Partial<Course>): Promise<Course> {
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(courseData),
-    });
+    const response = await api.post<{ success: boolean; data: Course }>(this.basePath, courseData);
+    return response.data;
+  }
 
-    if (!response.ok) {
-      throw new Error(`Failed to create course: ${response.statusText}`);
-    }
+  static async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
+    const response = await api.put<{ success: boolean; data: Course }>(`${this.basePath}/${id}`, courseData);
+    return response.data;
+  }
 
-    const data = await response.json();
+  static async deleteCourse(id: string): Promise<void> {
+    await api.delete(`${this.basePath}/${id}`);
+  }
 
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to create course');
-    }
-
-    return data.data;
+  static async enrollInCourse(courseId: string): Promise<any> {
+    const response = await api.post(`${this.basePath}/${courseId}/enroll`);
+    return response.data;
   }
 }

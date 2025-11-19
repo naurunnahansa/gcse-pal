@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
+import { AuthAPI } from '../lib/api/auth';
 
 interface User {
   id: string;
@@ -57,78 +58,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('🔄 Starting user sync for:', user.primaryEmailAddress?.emailAddress);
 
-          // Try the main sync endpoint first with timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
+          const result = await AuthAPI.syncUser();
+          console.log('✅ Sync response:', result.data);
 
-          let response;
-          try {
-            response = await fetch('/api/auth/sync', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              signal: controller.signal,
-            });
-          } catch (syncError) {
-            if (syncError.name === 'AbortError') {
-              console.warn('⏰ Main sync endpoint timed out, trying bypass...');
-
-              // Fallback to bypass endpoint
-              const bypassController = new AbortController();
-              const bypassTimeoutId = setTimeout(() => bypassController.abort(), 10000);
-
-              try {
-                response = await fetch('/api/auth/sync-bypass', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  signal: bypassController.signal,
-                });
-                clearTimeout(bypassTimeoutId);
-                console.log('🔄 Using bypass sync endpoint');
-              } catch (bypassError) {
-                if (bypassError.name === 'AbortError') {
-                  console.error('⏰ Bypass sync endpoint also timed out');
-                } else {
-                  console.error('💥 Bypass sync error:', bypassError);
-                }
-                return;
-              }
-            } else {
-              throw syncError;
-            }
-          }
-
-          clearTimeout(timeoutId);
-          console.log('📡 Sync response status:', response.status);
-
-          if (!response.ok) {
-            console.error('❌ Failed to sync user with database, status:', response.status);
+          // Set user role from database response
+          if (result.success && result.data?.role) {
+            setUserRole(result.data.role);
+            console.log('🎯 User role set to:', result.data.role);
+          } else if (!result.success) {
+            console.log('⚠️ Sync failed:', result.error || 'Unknown error');
+            // Set a default role for development
+            setUserRole('student');
           } else {
-            const result = await response.json();
-            console.log('✅ Sync response:', result.data);
-
-            // Set user role from database response
-            if (result.data?.role) {
-              setUserRole(result.data.role);
-              console.log('🎯 User role set to:', result.data.role);
-
-              // Update sync tracking
-              setLastSyncedUserId(currentUserId);
-              setLastSyncTime(now);
-            } else {
-              console.log('⚠️ No role found in sync response');
-
-              // Still update tracking to avoid repeated calls
-              setLastSyncedUserId(currentUserId);
-              setLastSyncTime(now);
-            }
+            console.log('⚠️ No role found in sync response');
+            setUserRole('student');
           }
+
+          // Update sync tracking
+          setLastSyncedUserId(currentUserId);
+          setLastSyncTime(now);
         } catch (error) {
           console.error('💥 Error syncing user:', error);
+
+          // Set a default role for development to prevent infinite loops
+          setUserRole('student');
 
           // Still update tracking to avoid rapid retry loops
           setLastSyncedUserId(currentUserId);

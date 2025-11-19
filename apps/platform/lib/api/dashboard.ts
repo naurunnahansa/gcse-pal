@@ -1,3 +1,5 @@
+import { api } from '../api';
+
 export interface User {
   id: string;
   name: string;
@@ -72,21 +74,10 @@ export interface DashboardStats {
 }
 
 export class DashboardAPI {
-  private static baseUrl = '/api/dashboard/stats';
+  private static basePath = '/dashboard/stats';
 
   static async getDashboardStats(): Promise<DashboardStats> {
-    const response = await fetch(this.baseUrl);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch dashboard stats: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch dashboard stats');
-    }
-
-    return data.data;
+    const response = await api.get<{ success: boolean; data: DashboardStats }>(this.basePath);
+    return response.data;
   }
 }

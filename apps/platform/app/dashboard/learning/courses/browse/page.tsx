@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { useAuth } from "@/components/AuthProvider";
 import { useCourses } from "@/hooks/useCourses";
+import { CoursesAPI } from "@/lib/api/courses";
 import { toast } from 'sonner';
 import {
   BookOpen,
@@ -105,14 +106,7 @@ const BrowseCourses = () => {
 
     setEnrollingCourseId(courseId);
     try {
-      const response = await fetch(`/api/courses/${courseId}/enroll`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
+      const result = await CoursesAPI.enrollInCourse(courseId);
 
       if (result.success) {
         toast.success('Successfully enrolled in course!');

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { db, enrollments, eq, and } from '@/lib/db';
+import { findUserByClerkId, findEnrollment } from '@/lib/db/queries';
 
 // Add timeout utility
 const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
