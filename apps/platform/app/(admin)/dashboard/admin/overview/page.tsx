@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/AuthProvider";
+import { useAdmin } from "@/hooks/useAdmin";
+import { AdminAPI } from "@/lib/api/admin";
 import {
   BookOpen,
   Brain,
@@ -91,9 +93,7 @@ const AdminOverview = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
-  const [adminData, setAdminData] = useState<AdminData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: adminData, loading, error, refresh } = useAdmin();
 
   React.useEffect(() => {
     setMounted(true);
@@ -105,20 +105,8 @@ const AdminOverview = () => {
 
       try {
         setLoading(true);
-        const response = await fetch('/api/admin/stats');
-        if (!response.ok) {
-          if (response.status === 403) {
-            setError('Access denied. Admin privileges required.');
-            return;
-          }
-          throw new Error('Failed to fetch admin data');
-        }
-        const data = await response.json();
-        if (data.success) {
-          setAdminData(data.data);
-        } else {
-          setError(data.error || 'Failed to load admin data');
-        }
+        const data = await AdminAPI.getStats();
+        setAdminData(data);
       } catch (err) {
         console.error('Error fetching admin data:', err);
         // Provide fallback data when API fails

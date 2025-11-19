@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronRight, ChevronDown, File, Edit3, Download, FileJson, AlertCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
+import { CoursesAPI } from '@/lib/api/courses';
 
 interface Chapter {
   id: string;
@@ -95,14 +96,8 @@ const EditCoursePage = () => {
 
   const fetchCourse = async () => {
     try {
-      const response = await fetch(`/api/courses/${courseId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch course');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        const course = result.data;
+      const course = await CoursesAPI.getCourse(courseId);
+      if (course) {
         setCourseData({
           title: course.title || '',
           description: course.description || '',
@@ -138,20 +133,12 @@ const EditCoursePage = () => {
     setIsAutoSaving(true);
     try {
       // Save to server as draft
-      const response = await fetch(`/api/courses/${courseId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...courseData,
-          status: 'draft',
-        }),
+      await CoursesAPI.updateCourse(courseId, {
+        ...courseData,
+        status: 'draft',
       });
 
-      if (response.ok) {
-        setLastSaved(new Date());
-      }
+      setLastSaved(new Date());
     } catch (error) {
       console.error('Auto-save failed:', error);
     } finally {
@@ -186,16 +173,8 @@ const EditCoursePage = () => {
         duration: calculateTotalDuration(),
       };
 
-      const response = await fetch(`/api/courses/${courseId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(courseToSubmit),
-      });
-
-      const result = await response.json();
-      if (result.success) {
+      const result = await CoursesAPI.updateCourse(courseId, courseToSubmit);
+      if (result) {
         toast.success(`Course ${status === 'published' ? 'published' : 'saved'} successfully!`, {
           description: `"${courseData.title}" has been updated.`
         });

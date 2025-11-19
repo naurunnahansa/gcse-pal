@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CoursesAPI, Course, CourseFilter, CourseResponse } from '@/lib/api/courses';
+import { CoursesAPI, Course, CourseFilter, CourseListResponse } from '@/lib/api/courses';
 
 interface UseCoursesOptions {
   autoFetch?: boolean;
@@ -27,7 +27,7 @@ export const useCourses = (options: UseCoursesOptions = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const response: CourseResponse = await CoursesAPI.getCourses(filters);
+      const response: CourseListResponse = await CoursesAPI.getCourses(filters);
       setCourses(response.data);
       setPagination(response.pagination);
     } catch (err) {

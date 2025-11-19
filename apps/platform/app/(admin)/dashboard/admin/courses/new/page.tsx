@@ -14,6 +14,7 @@ import { Plus, Trash2, Upload, Save, Eye, FileText, Settings, BookOpen, ChevronR
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
 import { UnifiedLayout } from '@/components/layouts/UnifiedLayout';
+import { CoursesAPI } from '@/lib/api/courses';
 
 interface Chapter {
   id: string;
@@ -284,21 +285,7 @@ export default function CreateCoursePage() {
         duration: calculateTotalDuration(),
       };
 
-      const response = await fetch('/api/courses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(courseToSubmit),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('Course creation API error:', error);
-        throw new Error(error.error || error.message || 'Failed to create course');
-      }
-
-      const result = await response.json();
+      const result = await CoursesAPI.createCourse(courseToSubmit);
 
       toast.success(`Course ${status === 'published' ? 'published' : 'saved as draft'} successfully!`, {
         description: `"${courseData.title}" has been created.`
