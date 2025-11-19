@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "rootDirectory": "apps/platform",
   "buildCommand": "pnpm run build:vercel",
   "installCommand": "pnpm install",
   "framework": "nextjs"
