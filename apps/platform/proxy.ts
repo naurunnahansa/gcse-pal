@@ -1,11 +1,52 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/profile(.*)'])
+// Define role-based route matchers
+const isAdminRoute = createRouteMatcher([
+  '/admin(.*)',
+  '/api/admin(.*)',
+  '/dashboard/admin(.*)',
+])
 
-export default clerkMiddleware((auth, req) => {
-  if (isProtectedRoute(req)) {
-    auth.protect()
+const isTeacherRoute = createRouteMatcher([
+  '/teacher(.*)',
+  '/api/teacher(.*)',
+  '/dashboard/teacher(.*)',
+])
+
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/courses(.*)',
+  '/quizzes(.*)',
+  '/profile(.*)',
+])
+
+export default clerkMiddleware(async (auth, req) => {
+  // Get user's role from session metadata
+  const session = await auth()
+  const userRole = session?.sessionClaims?.metadata?.role as string
+
+  // Redirect unauthenticated users from protected routes
+  if (isProtectedRoute(req) && !session?.userId) {
+    const signInUrl = new URL('/sign-in', req.url)
+    signInUrl.searchParams.set('redirect_url', req.url)
+    return NextResponse.redirect(signInUrl)
   }
+
+  // Protect admin routes - only admin users can access
+  if (isAdminRoute(req) && userRole !== 'admin') {
+    const url = new URL('/unauthorized', req.url)
+    return NextResponse.redirect(url)
+  }
+
+  // Protect teacher routes - only teacher or admin users can access
+  if (isTeacherRoute(req) && !['teacher', 'admin'].includes(userRole || '')) {
+    const url = new URL('/unauthorized', req.url)
+    return NextResponse.redirect(url)
+  }
+
+  // For public routes, continue normally
+  return NextResponse.next()
 })
 
 export const config = {

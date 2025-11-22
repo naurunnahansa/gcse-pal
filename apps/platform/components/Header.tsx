@@ -4,8 +4,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Image from "next/image";
+import { TeacherOrAdmin, AdminOnly, usePermissions } from '@/components/RBACWrapper';
 
 const Header = () => {
+  const { permissions } = usePermissions();
+
   return (
     <header className="sticky top-0 z-50 w-full bg-background/0 supports-[backdrop-filter]:bg-background/0">
       <div className="container">
@@ -33,17 +36,29 @@ const Header = () => {
               </a>
               <SignedIn>
                 <Link
-                  href="/dashboard"
+                  href="/courses"
                   className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
                 >
-                  Dashboard
+                  Courses
                 </Link>
-                <Link
-                  href="/dashboard/admin/overview"
-                  className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
-                >
-                  Admin
-                </Link>
+
+                <TeacherOrAdmin>
+                  <Link
+                    href="/dashboard"
+                    className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+                  >
+                    Dashboard
+                  </Link>
+                </TeacherOrAdmin>
+
+                <AdminOnly>
+                  <Link
+                    href="/dashboard/admin/overview"
+                    className="text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
+                  >
+                    Admin
+                  </Link>
+                </AdminOnly>
               </SignedIn>
               <SignedOut>
                 <Link

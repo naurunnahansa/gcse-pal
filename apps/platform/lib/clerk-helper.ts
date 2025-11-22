@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { db, users } from '@/lib/db/queries';
 import { eq } from 'drizzle-orm';
+import { Role, hasPermission, canManageUsers, canManageCourses, canManageQuizzes, canViewAllProgress, canAccessDashboard } from './permissions';
 
 /**
  * Get the current authenticated user from Clerk
@@ -166,5 +167,127 @@ export async function ensureUserExists(clerkUserId: string) {
   } catch (error) {
     console.error('Error ensuring user exists:', error);
     return false;
+  }
+}
+
+/**
+ * Get user role from Clerk session metadata (following article approach)
+ */
+export async function getUserRole(): Promise<Role | null> {
+  try {
+    const session = await auth();
+    return (session?.sessionClaims?.metadata?.role as Role) || null;
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if current user has specific permission
+ */
+export async function checkPermission(permission: string): Promise<boolean> {
+  try {
+    const role = await getUserRole();
+    return hasPermission(role, permission);
+  } catch (error) {
+    console.error('Error checking permission:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if current user has admin privileges
+ */
+export async function checkAdminAccess(): Promise<boolean> {
+  try {
+    const role = await getUserRole();
+    return role === 'admin' || role === 'teacher';
+  } catch (error) {
+    console.error('Error checking admin access:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if current user has teacher privileges
+ */
+export async function checkTeacherAccess(): Promise<boolean> {
+  try {
+    const role = await getUserRole();
+    return role === 'teacher' || role === 'admin';
+  } catch (error) {
+    console.error('Error checking teacher access:', error);
+    return false;
+  }
+}
+
+/**
+ * Update user role in both Clerk metadata and database
+ */
+export async function updateUserRole(targetUserId: string, newRole: Role): Promise<boolean> {
+  try {
+    // Check if current user has permission to manage roles
+    const currentRole = await getUserRole();
+    if (!canManageUsers(currentRole)) {
+      throw new Error('Insufficient permissions to manage user roles');
+    }
+
+    // Update role in Clerk metadata
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const client = await clerkClient();
+
+    await client.users.updateUser(targetUserId, {
+      publicMetadata: { role: newRole }
+    });
+
+    // Update role in database
+    await db.update(users)
+      .set({
+        role: newRole,
+        updatedAt: new Date()
+      })
+      .where(eq(users.clerkId, targetUserId));
+
+    return true;
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return false;
+  }
+}
+
+/**
+ * Get user with role information from Clerk session
+ */
+export async function getCurrentUserWithRole() {
+  try {
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return null;
+    }
+
+    const role = clerkUser.publicMetadata?.role as Role || null;
+
+    return {
+      userId: clerkUser.id,
+      email: clerkUser.emailAddresses[0]?.emailAddress,
+      name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || clerkUser.username || 'User',
+      avatar: clerkUser.imageUrl,
+      role: role,
+      // Permission checks
+      permissions: {
+        canManageUsers: canManageUsers(role),
+        canManageCourses: canManageCourses(role),
+        canManageQuizzes: canManageQuizzes(role),
+        canViewAllProgress: canViewAllProgress(role),
+        canAccessDashboard: canAccessDashboard(role),
+        isAdmin: role === 'admin',
+        isTeacher: role === 'teacher' || role === 'admin',
+        isStudent: role === 'student' || !role, // Treat no role as student
+      }
+    };
+  } catch (error) {
+    console.error('Error getting current user with role:', error);
+    return null;
   }
 }
