@@ -1,177 +1,124 @@
-# GCSE Pal
+# Q&A Platform with RBAC
 
-**AI-Powered Educational Platform**
+> A modern Q&A platform built with Next.js and Clerk, featuring role-based access control. Ask questions, share knowledge, and learn from others in a secure, well-structured environment.
 
-GCSE Pal is an educational platform built on the Model Context Protocol (MCP), providing intelligent AI assistance powered by Claude.
+![Q&A Platform Screenshot](public/screenshot.png)
 
-## 🚀 Quick Start
+> This project is based on the Q&A app by Ankur Tyagi, located at [https://github.com/tyaga001/clerk-qa-platform](https://github.com/tyaga001/clerk-qa-platform).
+
+## 🌟 Features
+
+- **Authentication & Authorization**
+  - Secure authentication with Clerk
+  - Role-based access control (RBAC)
+  - Protected routes and API endpoints
+
+- **Core Functionality**
+  - Ask and answer questions
+  - Search users and questions
+  - Admin dashboard for content moderation
+  - Real-time updates
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Node.js** >= 18.0.0
-- **pnpm** 8.15.0+
+- Node.js 18+
+- npm/yarn
+- A Clerk account
+- A Neon Database account
 
 ### Installation
 
+1. Clone the repository:
 ```bash
-# Install dependencies
-pnpm install
-
-# Set up environment variables
-cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
-
-# Start development servers
-pnpm dev
+git clone https://github.com/bmorrisondev/qa-app
+cd qa-app
 ```
 
-This will start:
-- **Platform (Next.js)**: http://localhost:3000
-- **xMCP Server**: MCP application
-
-## 📁 Project Structure
-
-```
-gcse-pal/
-├── apps/
-│   ├── platform/            # Next.js AI chatbot platform
-│   └── xmcp/                # xMCP application with tool syntax
-├── packages/
-│   ├── db/                  # Drizzle ORM + PostgreSQL schema
-│   ├── knowledge/           # Neo4j integration for vector search
-│   └── typescript-config/   # Shared TypeScript configurations
-└── README.md               # This file
-```
-
-## 🛠️ Technology Stack
-
-### Platform
-- **Next.js 16** with App Router
-- **React 19** with Server Components
-- **Vercel AI SDK** for chat interface
-- **Tailwind CSS 4** + Radix UI
-- **Claude Sonnet 4.5** via Anthropic API
-
-### Backend
-- **xMCP** - Model Context Protocol server
-- **Drizzle ORM** with PostgreSQL (optional)
-- **Neo4j** for knowledge graphs (optional)
-- **Zod** for validation
-
-## 📜 Available Scripts
-
-### Development
-
+2. Install dependencies:
 ```bash
-pnpm dev              # Start all apps in development mode
-pnpm build            # Build all apps for production
-pnpm check-types      # Run TypeScript type checking
-pnpm lint             # Run ESLint
-pnpm clean            # Clean build artifacts
+npm install
 ```
 
-### Individual Apps
-
+3. Set up environment variables:
 ```bash
-# Platform (Next.js)
-cd apps/platform
-pnpm dev              # Start on port 3000
-pnpm build            # Build for production
-
-# xMCP Application
-cd apps/xmcp
-pnpm dev              # Start in dev mode
-pnpm build            # Build for production
-pnpm start            # Start production server
+# Create a .env file in the root directory and add:
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
+CLERK_SECRET_KEY=your_secret_key
+NEON_DATABASE_URL=your_database_url
 ```
 
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the root directory:
-
+4. Initialize the database:
 ```bash
-# Anthropic API Key (Required)
-ANTHROPIC_API_KEY=sk-ant-...
-
-# xMCP Server URL (Optional - defaults to http://localhost:3001/mcp)
-MCP_SERVER_URL=http://localhost:3001/mcp
-
-# Database URL (Optional - only if using packages/db)
-# DATABASE_URL=postgresql://username:password@localhost:5432/database
+npx drizzle-kit push
 ```
 
-You can also copy the example file:
+5. Start the development server:
 ```bash
-cp .env.example .env
+npm run dev
 ```
 
-## 🏗️ Architecture Overview
+Visit `http://localhost:3000` to see the application.
 
-GCSE Pal uses a modern monorepo architecture powered by Turborepo and pnpm workspaces:
+## 🏗️ Project Structure
 
-### Key Components
-
-1. **Platform (Frontend)**: Next.js AI chatbot interface with Claude Sonnet 4.5
-2. **xMCP Server**: MCP server exposing tools, resources, and prompts
-3. **Shared Packages**: Reusable TypeScript configurations and utilities
-
-### Model Context Protocol (MCP)
-
-The platform connects to the xMCP server to access additional tools and capabilities:
-
-- **Tools**: Custom functions the AI can execute
-- **Resources**: Data and content the AI can access
-- **Prompts**: Template definitions for AI interactions
-
-## 🔌 MCP Server Integration
-
-### Connecting to MCP Server
-
-```typescript
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp';
-
-const transport = new StreamableHTTPClientTransport(
-  new URL('http://localhost:3001/mcp')
-);
+```
+clerk-qa-platform/
+├── .idea/                # IDE configuration
+├── .next/                # Next.js build output
+├── drizzle/              # Drizzle ORM files
+├── node_modules/         # Dependencies
+├── public/              # Static files
+├── src/                 # Source code
+│   ├── app/            # Next.js app directory
+│   │   ├── admin/      # Admin features
+│   │   ├── qa/         # Q&A features
+│   ├── components/     # React components
+│   ├── db/            # Database configurations
+│   ├── lib/           # Utility libraries
+│   ├── types/         # TypeScript types
+│   └── utils/         # Utility functions
+├── .env               # Environment variables
+├── .gitignore        # Git ignore rules
+├── favicon.ico       # Site favicon
+├── globals.css       # Global styles
+├── layout.tsx        # Root layout
+├── middleware.ts     # Auth middleware
+└── page.tsx          # Root page
 ```
 
-## 📦 Deployment
+## 🔐 Role-Based Access Control
 
-### Production Build
+The platform implements three main roles:
+- **Admin**: Full access to all features
+- **Moderator**: Can moderate content
+- **User**: Can ask and answer questions
 
+## 📝 Environment Variables
+
+Required environment variables:
 ```bash
-# Build all apps
-pnpm build
-
-# Start production servers
-cd apps/xmcp && pnpm start
-cd apps/platform && pnpm start
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEON_DATABASE_URL=
 ```
-
-### Deployment Options
-
-- Deploy platform to **Vercel** (recommended for Next.js)
-- Deploy xMCP server to your preferred hosting
-- Set production environment variables
 
 ## 🤝 Contributing
 
-This is an active development project. Feel free to submit issues and pull requests.
+Contributions are welcome. Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-[Add your license here]
+This project is licensed under the Creative Commons License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## 👏 Acknowledgments
 
-- [Model Context Protocol Spec](https://modelcontextprotocol.io/)
-- [Anthropic Claude](https://www.anthropic.com/claude)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Turborepo](https://turbo.build/repo)
-- [xMCP](https://xmcp.dev/)
-
----
-
-**Built with MCP** • **Powered by Claude** • **Built with Turborepo**
+- [Clerk](https://clerk.dev/) for authentication
+- [Neon](https://neon.tech/) for the database
